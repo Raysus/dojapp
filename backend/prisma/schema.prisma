@@ -1,0 +1,221 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+/**
+ * =======================
+ * ENUMS
+ * =======================
+ */
+
+enum DojoRole {
+  STUDENT
+  INSTRUCTOR
+  PROFESSOR
+}
+
+enum ContentType {
+  PDF
+  VIDEO
+  TEXT
+  LINK
+}
+
+enum UserRole {
+  ADMIN
+  PROFESSOR
+  STUDENT
+}
+
+/**
+ * =======================
+ * CORE MODELS
+ * =======================
+ */
+
+model User {
+  id        String   @id @default(uuid())
+  email     String   @unique
+  password  String
+  name      String
+  role      UserRole
+  createdAt DateTime @default(now())
+
+  dojoMemberships DojoMembership[]
+  userStyles      UserStyle[]
+  contentsCreated Content[]        @relation("CreatedContent")
+
+  attendances              Attendance[]              @relation("AttendanceStudent")
+  attendancesTakenBy       Attendance[]              @relation("AttendanceTakenBy")
+  studentContents          StudentContent[]
+  studentGrades            StudentGrade[]
+  studentProgressSnapshots StudentProgressSnapshot[]
+}
+
+model Style {
+  id          String   @id @default(uuid())
+  name        String   @unique
+  description String?
+  createdAt   DateTime @default(now())
+
+  dojos      Dojo[]
+  grades     Grade[]
+  contents   Content[]
+  userStyles UserStyle[]
+}
+
+model Dojo {
+  id   String @id @default(uuid())
+  name String
+
+  styleId String
+  style   Style  @relation(fields: [styleId], references: [id])
+
+  memberships              DojoMembership[]
+  attendances              Attendance[]
+  studentGrades            StudentGrade[]
+  studentProgressSnapshots StudentProgressSnapshot[]
+}
+
+model DojoMembership {
+  id String @id @default(uuid())
+
+  userId String
+  dojoId String
+  role   DojoRole
+
+  user User @relation(fields: [userId], references: [id])
+  dojo Dojo @relation(fields: [dojoId], references: [id])
+
+  @@unique([userId, dojoId])
+}
+
+model Grade {
+  id    String @id @default(uuid())
+  name  String
+  order Int
+
+  styleId String
+  style   Style  @relation(fields: [styleId], references: [id])
+
+  contents                 Content[]
+  userStyles               UserStyle[]
+  studentGrades            StudentGrade[]
+  studentProgressSnapshots StudentProgressSnapshot[]
+}
+
+model StudentGrade {
+  id        String   @id @default(uuid())
+  userId    String
+  dojoId    String
+  gradeId   String
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  user  User  @relation(fields: [userId], references: [id])
+  dojo  Dojo  @relation(fields: [dojoId], references: [id])
+  grade Grade @relation(fields: [gradeId], references: [id])
+
+  @@unique([userId, dojoId])
+}
+
+/**
+ * =======================
+ * CONTENT
+ * =======================
+ */
+
+model Content {
+  id    String @id @default(uuid())
+  title String
+
+  type ContentType @default(TEXT)
+  url  String?
+  body String?
+
+  styleId String
+  gradeId String?
+
+  createdAt DateTime @default(now())
+
+  createdById String
+  createdBy   User   @relation("CreatedContent", fields: [createdById], references: [id])
+  style       Style  @relation(fields: [styleId], references: [id])
+  grade       Grade? @relation(fields: [gradeId], references: [id])
+
+  studentContents StudentContent[]
+}
+
+model StudentContent {
+  id        String   @id @default(uuid())
+  userId    String
+  contentId String
+  completed Boolean  @default(false)
+  createdAt DateTime @default(now())
+
+  user    User    @relation(fields: [userId], references: [id])
+  content Content @relation(fields: [contentId], references: [id])
+
+  @@unique([userId, contentId])
+}
+
+/**
+ * =======================
+ * STYLES & ATTENDANCE
+ * =======================
+ */
+
+model UserStyle {
+  id      String @id @default(uuid())
+  userId  String
+  styleId String
+
+  gradeId String
+  grade   Grade  @relation(fields: [gradeId], references: [id])
+
+  user  User  @relation(fields: [userId], references: [id])
+  style Style @relation(fields: [styleId], references: [id])
+
+  @@unique([userId, styleId])
+}
+
+model Attendance {
+  id String @id @default(uuid())
+
+  dojoId    String
+  userId    String
+  takenById String
+
+  date    DateTime @default(now())
+  present Boolean
+
+  dojo Dojo @relation(fields: [dojoId], references: [id])
+
+  user User @relation("AttendanceStudent", fields: [userId], references: [id])
+
+  takenBy User @relation("AttendanceTakenBy", fields: [takenById], references: [id])
+}
+
+model StudentProgressSnapshot {
+  id     String @id @default(uuid())
+  userId String
+  dojoId String
+
+  gradeId    String?
+  percentage Int
+  completed  Int
+  total      Int
+
+  createdAt DateTime @default(now())
+
+  user  User   @relation(fields: [userId], references: [id])
+  dojo  Dojo   @relation(fields: [dojoId], references: [id])
+  grade Grade? @relation(fields: [gradeId], references: [id])
+
+  @@index([userId, dojoId, createdAt])
+}

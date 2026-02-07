@@ -1,0 +1,72 @@
+.card {
+    background: var(--card);
+    border-radius: var(--radius);
+    padding: 20px;
+    box-shadow: var(--shadow);
+    margin-bottom: 24px;
+}
+
+.button {
+    padding: 8px 14px;
+    border-radius: 6px;
+    border: none;
+    cursor: pointer;
+    font-weight: 500;
+    background: var(--primary);
+    color: white;
+}
+
+.button:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+}
+
+.button.secondary {
+    background: transparent;
+    color: var(--primary);
+    border: 1px solid var(--primary);
+}
+
+.progress {
+    height: 10px;
+    background: #e5e7eb;
+    border-radius: 999px;
+    overflow: hidden;
+}
+
+.progress-bar {
+    height: 100%;
+    background: var(--success);
+    transition: width 0.3s;
+}
+
+.dojo-card {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+
+.dojo-card h3 {
+    margin: 0;
+}
+
+.link {
+    color: var(--primary);
+    cursor: pointer;
+    font-weight: 500;
+}
+
+.student-item {
+    padding: 12px;
+    border-radius: 8px;
+    cursor: pointer;
+    transition: background 0.2s;
+}
+
+.student-item:hover {
+    background: #f1f5f9;
+}
+
+input[type="checkbox"] {
+    accent-color: var(--success);
+}
