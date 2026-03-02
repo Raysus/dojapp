@@ -6,12 +6,6 @@ import { UserRole } from '@prisma/client'
 
 @Injectable()
 export class AuthService {
-  assertDojoRole(performedById: string, dojoId: string, arg2: ("INSTRUCTOR" | "PROFESSOR")[]) {
-    throw new Error('Method not implemented.')
-  }
-  assertProfessorInDojo(sub: string, dojoId: string, role: string) {
-    throw new Error('Method not implemented.')
-  }
   constructor(
     private prisma: PrismaService,
     private jwtService: JwtService,

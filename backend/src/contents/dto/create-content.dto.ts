@@ -2,24 +2,25 @@ import { ContentType } from '@prisma/client';
 import { IsEnum, IsOptional, IsString, IsUUID } from 'class-validator';
 
 export class CreateContentDto {
-    @IsString()
-    title: string;
+  @IsString()
+  title: string;
 
-    @IsEnum(ContentType)
-    type: ContentType;
+  @IsEnum(ContentType)
+  type: ContentType;
 
-    @IsOptional()
-    @IsString()
-    url?: string;
+  @IsOptional()
+  @IsString()
+  url?: string;
 
-    @IsOptional()
-    @IsString()
-    body?: string;
+  @IsOptional()
+  @IsString()
+  body?: string;
 
-    @IsUUID()
-    styleId: string;
+  @IsOptional()
+  @IsUUID()
+  styleId?: string;
 
-    @IsOptional()
-    @IsUUID()
-    gradeId?: string;
+  @IsOptional()
+  @IsUUID()
+  gradeId?: string;
 }

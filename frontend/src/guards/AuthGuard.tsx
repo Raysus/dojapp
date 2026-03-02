@@ -9,7 +9,7 @@ type Props = {
 export default function AuthGuard({ children }: Props) {
     const { user, loading } = useAuth();
 
-    if (loading) return null; // o spinner
+    if (loading) return null;
 
     if (!user) {
         return <Navigate to="/login" replace />;

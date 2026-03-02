@@ -27,6 +27,8 @@ export default function Login() {
         navigate('/professor');
       } else if (user.role === 'STUDENT') {
         navigate('/student');
+      } else if (user.role === 'ADMIN') {
+        navigate('/admin');
       } else {
         navigate('/unauthorized');
       }

@@ -1,92 +1,32 @@
-import { ForbiddenException, Injectable } from '@nestjs/common'
-import { PrismaService } from '../prisma/prisma.service'
+import { Injectable } from '@nestjs/common'
 import { DojoRole } from '@prisma/client'
+import { PermissionsService } from './permissions.service'
 
 @Injectable()
 export class AuthorizationService {
-
-  constructor(private prisma: PrismaService) { }
-
-  async assertDojoRole(
-    userId: string,
-    dojoId: string,
-    allowedRoles: DojoRole[]
-  ) {
-    const membership = await this.prisma.dojoMembership.findUnique({
-      where: {
-        userId_dojoId: { userId, dojoId },
-      },
-    });
-
-    if (!membership || !allowedRoles.includes(membership.role)) {
-      throw new ForbiddenException();
-    }
+  constructor(private readonly perms: PermissionsService) { }
+  
+  getMembership(userId: string, dojoId: string) {
+    return this.perms.getMembership(userId, dojoId)
   }
 
-
-  async assertUserInDojo(
-    userId: string,
-    dojoId: string,
-    roles?: DojoRole[],
-  ) {
-    const membership = await this.prisma.dojoMembership.findUnique({
-      where: {
-        userId_dojoId: {
-          userId,
-          dojoId,
-        },
-      },
-    });
-
-    if (!membership) {
-      throw new ForbiddenException('No perteneces a este dojo');
-    }
-
-    if (roles && !roles.includes(membership.role)) {
-      throw new ForbiddenException('No tienes permisos suficientes');
-    }
-
-    return membership;
+  assertDojoRole(userId: string, dojoId: string, allowedRoles: DojoRole[]) {
+    return this.perms.assertDojoRole(userId, dojoId, allowedRoles)
   }
 
-  async assertProfessorInDojo(userId: string, dojoId: string) {
-    const membership = await this.prisma.dojoMembership.findUnique({
-      where: {
-        userId_dojoId: {
-          userId,
-          dojoId,
-        },
-      },
-    });
-
-    const allowedRoles = new Set<DojoRole>([
-      DojoRole.PROFESSOR,
-      DojoRole.INSTRUCTOR,
-    ]);
-
-    if (!membership || !allowedRoles.has(membership.role)) {
-      throw new ForbiddenException('No tienes permisos en este dojo');
-    }
-
+  assertUserInDojo(userId: string, dojoId: string, roles?: DojoRole[]) {
+    return this.perms.assertUserInDojo(userId, dojoId, roles)
   }
-  async assertInstructorInDojo(userId: string, dojoId: string) {
-    const membership = await this.prisma.dojoMembership.findUnique({
-      where: {
-        userId_dojoId: {
-          userId,
-          dojoId,
-        },
-      },
-    });
 
-    const allowedRoles = new Set<DojoRole>([
-      DojoRole.PROFESSOR,
-      DojoRole.INSTRUCTOR,
-    ]);
+  assertProfessorInDojo(userId: string, dojoId: string) {
+    return this.perms.assertProfessorInDojo(userId, dojoId)
+  }
 
-    if (!membership || !allowedRoles.has(membership.role)) {
-      throw new ForbiddenException('No tienes permisos en este dojo');
-    }
+  assertInstructorInDojo(userId: string, dojoId: string) {
+    return this.perms.assertInstructorInDojo(userId, dojoId)
+  }
+
+  assertStudentInDojo(studentUserId: string, dojoId: string) {
+    return this.perms.assertStudentInDojo(studentUserId, dojoId)
   }
 }
-

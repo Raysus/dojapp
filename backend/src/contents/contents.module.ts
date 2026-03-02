@@ -7,7 +7,7 @@ import { AuthorizationModule } from '../authorization/authorization.module';
 @Module({
   imports: [
     PrismaModule,
-    AuthorizationModule, // 👈 obligatorio por el guard + service
+    AuthorizationModule,
   ],
   controllers: [ContentsController],
   providers: [ContentsService],

@@ -2,19 +2,23 @@ import { Navigate } from 'react-router-dom';
 import { useAuth } from '../auth/AuthContext';
 import type { JSX } from 'react';
 
+type Role = 'ADMIN' | 'PROFESSOR' | 'STUDENT';
+
 type Props = {
-    role: 'PROFESSOR' | 'STUDENT';
-    children: JSX.Element;
+  role: Role | Role[];
+  children: JSX.Element;
 };
 
 export default function RoleGuard({ role, children }: Props) {
-    const { user } = useAuth();
+  const { user } = useAuth();
 
-    if (!user) return <Navigate to="/login" replace />;
+  if (!user) return <Navigate to="/login" replace />;
 
-    if (user.role !== role) {
-        return <Navigate to="/unauthorized" replace />;
-    }
+  const allowed = Array.isArray(role) ? role : [role];
 
-    return children;
+  if (!allowed.includes(user.role)) {
+    return <Navigate to="/unauthorized" replace />;
+  }
+
+  return children;
 }

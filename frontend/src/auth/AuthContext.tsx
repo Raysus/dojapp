@@ -4,7 +4,7 @@ import { jwtDecode } from 'jwt-decode';
 interface UserPayload {
   sub: string;
   email: string;
-  role: 'PROFESSOR' | 'STUDENT';
+  role: 'ADMIN' | 'PROFESSOR' | 'STUDENT';
 }
 
 const AuthContext = createContext<any>(null);

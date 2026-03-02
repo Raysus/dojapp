@@ -1,18 +1,20 @@
-import { Test, TestingModule } from '@nestjs/testing';
-import { AuthorizationController } from './authorization.controller';
+import { Test, TestingModule } from '@nestjs/testing'
+import { AuthorizationController } from './authorization.controller'
+import { AuthorizationService } from './authorization.service'
 
 describe('AuthorizationController', () => {
-  let controller: AuthorizationController;
+  let controller: AuthorizationController
 
   beforeEach(async () => {
     const module: TestingModule = await Test.createTestingModule({
       controllers: [AuthorizationController],
-    }).compile();
+      providers: [{ provide: AuthorizationService, useValue: {} }],
+    }).compile()
 
-    controller = module.get<AuthorizationController>(AuthorizationController);
-  });
+    controller = module.get<AuthorizationController>(AuthorizationController)
+  })
 
   it('should be defined', () => {
-    expect(controller).toBeDefined();
-  });
-});
+    expect(controller).toBeDefined()
+  })
+})

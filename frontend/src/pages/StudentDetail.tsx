@@ -1,159 +1,154 @@
-import { useEffect, useState, useRef } from 'react';
-import { useParams, useNavigate } from 'react-router-dom';
-import { getStudentDetail, toggleContent } from '../services/students.service';
-import { useStudentProgress } from '../hooks/useStudentProgress';
-import type { Student } from '../types/student';
-import StudentDetailSkeleton from '../components/StudentDetailSkeleton';
-import { loadStudentProgress, saveStudentProgress } from '../utils/studentProgressStorage';
-import { ThemeToggle } from '../components/Theme';
-
+import { useEffect, useMemo, useState } from 'react'
+import { useParams, useNavigate } from 'react-router-dom'
+import {
+  getStudentDetail,
+  getStudentVisibleContents,
+  assignStudentGrade,
+  type VisibleContentsResponse,
+} from '../services/students.service'
+import type { Student } from '../types/student'
+import StudentDetailSkeleton from '../components/StudentDetailSkeleton'
+import { getAttendanceMetrics } from '../services/professor.service'
+import { getDojoGrades } from '../services/dojos.service'
 
 export default function StudentDetail() {
-    const { id } = useParams();
-    const navigate = useNavigate();
+  const { dojoId, studentId } = useParams()
+  const navigate = useNavigate()
 
-    const [student, setStudent] = useState<Student | null>(null);
-    const [loading, setLoading] = useState(true);
+  const [student, setStudent] = useState<Student | null>(null)
+  const [visible, setVisible] = useState<VisibleContentsResponse | null>(null)
+  const [loading, setLoading] = useState(true)
+  const [attendancePct, setAttendancePct] = useState<number | null>(null)
+  const [attendanceMeta, setAttendanceMeta] = useState<{ attended: number; total: number } | null>(null)
+  const [grades, setGrades] = useState<Array<{ id: string; name: string; order: number }>>([])
+  const [gradeId, setGradeId] = useState<string>('')
+  const [savingGrade, setSavingGrade] = useState(false)
+  const [gradeError, setGradeError] = useState<string | null>(null)
 
-    const prevUnlockedRef = useRef<string[]>([]);
+  useEffect(() => {
+    let mounted = true
+    async function load() {
+      try {
+        if (!dojoId || !studentId) return
+        setLoading(true)
 
-    // 🔹 Cargar estudiante (UNA sola vez)
-    useEffect(() => {
-        let mounted = true;
+        const [s, v, metrics, dojoGrades] = await Promise.all([
+          getStudentDetail(dojoId, studentId),
+          getStudentVisibleContents(dojoId, studentId),
+          getAttendanceMetrics(dojoId),
+          getDojoGrades(dojoId),
+        ])
 
-        getStudentDetail(id!).then(data => {
-            if (!mounted) return;
-            setStudent(data);
-            setTimeout(() => setLoading(false), 300); // skeleton smooth
-        });
+        if (!mounted) return
+        setStudent(s as any)
+        setVisible(v)
 
-        return () => {
-            mounted = false;
-        };
-    }, [id]);
+        const m = metrics.students.find(x => x.userId === studentId)
+        setAttendancePct(m ? m.attendancePercentage : 0)
+        setAttendanceMeta(m ? { attended: m.attendedClasses, total: m.totalClasses } : { attended: 0, total: metrics.totalClasses })
 
-    useEffect(() => {
-        let mounted = true;
-
-        getStudentDetail(id!).then(data => {
-            if (!mounted) return;
-
-            const cached = loadStudentProgress(data.id);
-
-            if (cached) {
-                data = {
-                    ...data,
-                    studentContents: data.studentContents.filter(sc =>
-                        cached.includes(sc.contentId)
-                    )
-                };
-            }
-
-            setStudent(data);
-            setTimeout(() => setLoading(false), 300);
-        });
-
-        return () => {
-            mounted = false;
-        };
-    }, [id]);
-
-
-    // 🔹 Progreso (hook seguro)
-    const { completedIds, unlockedIds, progress } =
-        useStudentProgress(student);
-
-    // 🔹 Guardar unlocked previo
-    useEffect(() => {
-        prevUnlockedRef.current = unlockedIds;
-    }, [unlockedIds]);
-
-    // 🔹 Estados de carga
-    if (loading || !student) {
-        return <StudentDetailSkeleton />;
+        setGrades(dojoGrades)
+        setGradeId((v as any).gradeId ?? '')
+      } catch (e) {
+        console.error(e)
+      } finally {
+        if (mounted) setLoading(false)
+      }
     }
 
-    const handleToggle = async (contentId: string) => {
-        if (!unlockedIds.includes(contentId)) return;
+    load()
+    return () => {
+      mounted = false
+    }
+  }, [dojoId, studentId])
 
-        const updated = await toggleContent(student.id, contentId);
+  const currentGradeLabel = useMemo(() => {
+    const fallback = visible?.grade ?? ''
+    const g = grades.find(x => x.id === gradeId)
+    return g?.name ?? fallback
+  }, [grades, gradeId, visible?.grade])
 
-        const completed = updated.studentContents.map(
-            (sc: { contentId: any; }) => sc.contentId
-        );
+  if (loading || !student || !visible) return <StudentDetailSkeleton />
 
-        saveStudentProgress(updated.id, completed);
-        setStudent(updated);
-    };
+  const canEditGrade = grades.length > 0
 
+  const handleSaveGrade = async () => {
+    if (!dojoId || !studentId || !gradeId) return
+    setSavingGrade(true)
+    setGradeError(null)
+    try {
+      await assignStudentGrade(dojoId, studentId, gradeId)
+      const [s, v] = await Promise.all([
+        getStudentDetail(dojoId, studentId),
+        getStudentVisibleContents(dojoId, studentId),
+      ])
+      setStudent(s as any)
+      setVisible(v)
+    } catch (e: any) {
+      console.error(e)
+      setGradeError('No se pudo guardar el grado')
+    } finally {
+      setSavingGrade(false)
+    }
+  }
 
-    return (
-        <div>
-            <ThemeToggle />
-            <div className="card">
-                <h2>{student.user.name}</h2>
+  return (
+    <div className="stack">
 
-                <div className="progress">
-                    <div
-                        className="progress-bar"
-                        style={{ width: `${progress}%` }}
-                    />
-                </div>
+      <button className="button secondary" onClick={() => navigate(-1)} style={{ width: 'fit-content' }}>
+        ← Volver
+      </button>
+      <div className="card">
+        <h2 style={{ marginTop: 0 }}>{student.name}</h2>
+        <p className="muted" style={{ marginTop: 4 }}>
+          {visible.dojoName} • {currentGradeLabel}
+        </p>
 
-                <p>
-                    Progreso: <strong>{progress}%</strong>
-                </p>
-            </div>
+        <div style={{ marginTop: 12 }}>
+          <div className="muted" style={{ fontSize: 12, marginBottom: 6 }}>Asistencia</div>
+          <div className="progress">
+            <div className="progress-bar" style={{ width: `${attendancePct ?? 0}%` }} />
+          </div>
+          <p style={{ margin: '8px 0 0' }}>
+            <strong>{attendancePct ?? 0}%</strong>
+            {attendanceMeta ? (
+              <span className="muted"> • {attendanceMeta.attended}/{attendanceMeta.total} clases</span>
+            ) : null}
+          </p>
+        </div>
+
+        <div style={{ marginTop: 16 }}>
+          <div className="muted" style={{ fontSize: 12, marginBottom: 6 }}>Editar grado del alumno</div>
+          <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap', alignItems: 'center' }}>
+            <select
+              className="input"
+              value={gradeId}
+              onChange={(e) => setGradeId(e.target.value)}
+              disabled={!canEditGrade || savingGrade}
+            >
+              <option value="" disabled>
+                Selecciona un grado
+              </option>
+              {grades.map(g => (
+                <option key={g.id} value={g.id}>
+                  {g.order}. {g.name}
+                </option>
+              ))}
+            </select>
 
             <button
-                className="button secondary"
-                onClick={() => navigate(-1)}
-                style={{ marginBottom: 16 }}
+              className="button"
+              onClick={handleSaveGrade}
+              disabled={!gradeId || savingGrade}
             >
-                ← Volver
+              {savingGrade ? 'Guardando…' : 'Guardar grado'}
             </button>
-
-            <ul>
-                {student.grade.contents.map(c => {
-                    const completed = completedIds.includes(c.id);
-                    const unlocked = unlockedIds.includes(c.id);
-                    const wasUnlockedBefore =
-                        prevUnlockedRef.current.includes(c.id);
-                    const justUnlocked = unlocked && !wasUnlockedBefore;
-
-                    return (
-                        <li
-                            key={c.id}
-                            data-tooltip={
-                                !unlocked
-                                    ? 'Este contenido se desbloquea al completar el anterior'
-                                    : undefined
-                            }
-                            className={`
-                                content-item
-                                ${completed ? 'completed' : ''}
-                                ${unlocked ? 'unlocked' : 'locked'}
-                                ${justUnlocked ? 'just-unlocked' : ''}
-                            `}
-                        >
-                            <label>
-                                <input
-                                    type="checkbox"
-                                    checked={completed}
-                                    disabled={!unlocked}
-                                    onChange={() => handleToggle(c.id)}
-                                />{' '}
-                                {completed
-                                    ? '✅'
-                                    : unlocked
-                                        ? '📘'
-                                        : '🔒'}{' '}
-                                {c.title}
-                            </label>
-                        </li>
-                    );
-                })}
-            </ul>
+          </div>
+          {gradeError ? (
+            <p className="muted" style={{ color: 'var(--danger)', marginTop: 8 }}>{gradeError}</p>
+          ) : null}
         </div>
-    );
+      </div>
+    </div>
+  )
 }

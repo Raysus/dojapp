@@ -10,8 +10,10 @@ import { ContentsModule } from './contents/contents.module'
 import { AuthorizationModule } from './authorization/authorization.module'
 import { APP_GUARD } from '@nestjs/core'
 import { RolesGuard } from './authorization/guards/roles.guard'
-import { AttendanceService } from './attendance/attendance.service';
-import { AttendanceModule } from './attendance/attendance.module';
+import { JwtAuthGuard } from './auth/guards/jwt-auth.guard'
+import { AttendanceModule } from './attendance/attendance.module'
+import { MetricsModule } from './metrics/metrics.module'
+import { AdminModule } from './admin/admin.module'
 
 @Module({
   imports: [
@@ -25,13 +27,12 @@ import { AttendanceModule } from './attendance/attendance.module';
     ContentsModule,
     AuthorizationModule,
     AttendanceModule,
+    MetricsModule,
+    AdminModule,
   ],
   providers: [
-    {
-      provide: APP_GUARD,
-      useClass: RolesGuard,
-    },
-    AttendanceService,
+    { provide: APP_GUARD, useClass: JwtAuthGuard },
+    { provide: APP_GUARD, useClass: RolesGuard },
   ],
 })
-export class AppModule { }
+export class AppModule {}

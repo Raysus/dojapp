@@ -1,45 +1,26 @@
-import { useMemo } from 'react';
-import type { Student } from '../types/student';
+import { useMemo } from 'react'
 
-export function useStudentProgress(student: Student | null) {
-    const completedIds = useMemo(() => {
-        if (!student) return [];
-        return student.studentContents.map(sc => sc.contentId);
-    }, [student]);
+export function useStudentProgress(student: any, contents: Array<{ id: string }> = []) {
+  return useMemo(() => {
+    const completedIds = new Set<string>(
+      (student?.studentContents ?? [])
+        .filter((x: any) => x?.completed)
+        .map((x: any) => x.contentId),
+    )
 
-    const progress = useMemo(() => {
-        if (!student) return 0;
+    const allIds = (contents ?? []).map(c => c.id)
+    const unlockedIds = allIds
 
-        const total = student.grade.contents.length;
-        const done = completedIds.length;
-
-        return total === 0 ? 0 : Math.round((done / total) * 100);
-    }, [student, completedIds]);
-
-    const unlockedIds = useMemo(() => {
-        if (!student) return [];
-
-        const contents = [...student.grade.contents].sort(
-            (a, b) => a.order - b.order
-        );
-
-        const unlocked: string[] = [];
-
-        contents.forEach((content, index) => {
-            if (
-                index === 0 ||
-                completedIds.includes(contents[index - 1].id)
-            ) {
-                unlocked.push(content.id);
-            }
-        });
-
-        return unlocked;
-    }, [student, completedIds]);
+    const total = allIds.length
+    const completed = allIds.filter(id => completedIds.has(id)).length
+    const progress = total ? Math.round((completed / total) * 100) : 0
 
     return {
-        completedIds,
-        unlockedIds,
-        progress
-    };
+      completedIds: Array.from(completedIds),
+      unlockedIds,
+      progress,
+      total,
+      completed,
+    }
+  }, [student?.studentContents, contents])
 }

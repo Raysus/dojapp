@@ -1,13 +1,14 @@
-import type { User } from './user';
 import type { Grade } from './grade';
 
 export interface StudentContent {
   contentId: string;
+  completed: boolean;
 }
 
 export interface Student {
   id: string;
-  user: User;
-  grade: Grade;
+  name: string;
+  email: string;
+  grade?: Grade | null;
   studentContents: StudentContent[];
 }

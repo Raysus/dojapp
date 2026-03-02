@@ -1,23 +1,19 @@
-import { Controller, Get, Req, UseGuards, Param, Post, Body } from '@nestjs/common';
+import { Controller, Get, Req, UseGuards, Param } from '@nestjs/common';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
-import { RolesGuard } from '../authorization/guards/roles.guard';
 import { Roles } from '../authorization/decorators/roles.decorator';
 import { DojosService } from './dojos.service';
 import { DojoRoleGuard } from 'src/authorization/guards/dojo-role.guard';
-import { DojoRole } from '@prisma/client';
+import { DojoRole, UserRole } from '@prisma/client';
 import { DojoRoles } from 'src/authorization/decorators/dojo-roles.decorator';
-import { CreateContentDto } from 'src/contents/dto/create-content.dto';
 
 @Controller('dojos')
 @UseGuards(JwtAuthGuard)
 export class DojosController {
-    contentsService: any;
     constructor(private readonly dojosService: DojosService) { }
 
     @Get('mine')
-    @Roles('PROFESSOR')
+    @Roles(UserRole.PROFESSOR)
     getMine(@Req() req) {
-        console.log('USER:', req.user);
         return this.dojosService.getByProfessor(req.user.sub);
     }
 
@@ -34,46 +30,13 @@ export class DojosController {
         );
     }
 
+    @Get(':dojoId/grades')
     @UseGuards(JwtAuthGuard, DojoRoleGuard)
-    @DojoRoles(DojoRole.INSTRUCTOR, DojoRole.PROFESSOR)
-    @Post(':dojoId/contents')
-    createContent(
+    @DojoRoles(DojoRole.PROFESSOR, DojoRole.INSTRUCTOR)
+    getGrades(
         @Param('dojoId') dojoId: string,
-        @Body() dto: CreateContentDto,
         @Req() req,
     ) {
-        return this.contentsService.create(
-            dojoId,
-            dto,
-            req.user.sub, // userId YA validado
-        );
+        return this.dojosService.getGradesForDojo(dojoId, req.user.sub);
     }
-
-    @UseGuards(JwtAuthGuard, DojoRoleGuard)
-    @Get(':dojoId/contents')
-    getAvailableContents(
-        @Param('dojoId') dojoId: string,
-        @Req() req
-    ) {
-        return this.dojosService.getContentsForStudent(
-            dojoId,
-            req.user.sub
-        );
-    }
-
-    @UseGuards(JwtAuthGuard, DojoRoleGuard)
-    @DojoRoles(DojoRole.INSTRUCTOR, DojoRole.PROFESSOR)
-    @Post(':dojoId/attendance')
-    takeAttendance() { }
-
-    @UseGuards(JwtAuthGuard, DojoRoleGuard)
-    @DojoRoles(
-        DojoRole.STUDENT,
-        DojoRole.INSTRUCTOR,
-        DojoRole.PROFESSOR
-    )
-    @Get(':dojoId/contents')
-    getContents() { }
-
-
 }
