@@ -1,147 +1,263 @@
-import { useEffect, useState, useMemo } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import { useNavigate, useParams } from 'react-router-dom'
 import { api } from '../api/axios'
+import { useAuth } from '../auth/AuthContext'
+import { getNetworkErrorMessage } from '../hooks/useNetworkStatus'
+import { isNativeApp } from '../platform/native'
+import { completeMyContent } from '../services/students.service'
+import PageHeader from '../components/ui/PageHeader'
+import LoadingCard from '../components/ui/LoadingCard'
+import {
+  isDirectVideoUrl,
+  isYouTubeUrl,
+  openExternalUrl,
+  toYouTubeEmbed,
+  toYouTubeWatchUrl,
+} from '../platform/openContent'
 
 type Content = {
-    id: string
-    title: string
-    type: 'PDF' | 'VIDEO' | 'TEXT' | 'LINK'
-    url?: string | null
-    body?: string | null
-    gradeId?: string | null
-    grade?: { name: string; order: number } | null
-}
-
-function toYouTubeEmbed(url: string) {
-    try {
-        const u = new URL(url)
-        if (u.hostname.includes('youtu.be')) {
-            const id = u.pathname.replace('/', '')
-            return `https://www.youtube.com/embed/${id}`
-        }
-        if (u.hostname.includes('youtube.com')) {
-            const id = u.searchParams.get('v')
-            if (id) return `https://www.youtube.com/embed/${id}`
-        }
-    } catch { }
-    return null
+  id: string
+  title: string
+  type: 'PDF' | 'VIDEO' | 'TEXT' | 'LINK'
+  url?: string | null
+  body?: string | null
+  gradeId?: string | null
+  grade?: { name: string; order: number } | null
 }
 
 export default function ContentViewer() {
-    const { dojoId, contentId } = useParams()
-    const navigate = useNavigate()
-    const [content, setContent] = useState<Content | null>(null)
-    const [loading, setLoading] = useState(true)
-    const [err, setErr] = useState<string | null>(null)
+  const { dojoId, contentId } = useParams()
+  const navigate = useNavigate()
+  const { user } = useAuth()
+  const [content, setContent] = useState<Content | null>(null)
+  const [loading, setLoading] = useState(true)
+  const [err, setErr] = useState<string | null>(null)
+  const [opening, setOpening] = useState(false)
+  const [completed, setCompleted] = useState(false)
+  const [completing, setCompleting] = useState(false)
+  const [completeMsg, setCompleteMsg] = useState<string | null>(null)
+  const native = isNativeApp()
 
-    useEffect(() => {
-        let mounted = true
-        async function load() {
-            try {
-                if (!dojoId || !contentId) return
-                setLoading(true)
-                setErr(null)
-                const res = await api.get<Content>(`/dojos/${dojoId}/contents/${contentId}`)
-                if (!mounted) return
-                setContent(res.data)
-            } catch (e: any) {
-                if (!mounted) return
-                setErr(e?.response?.data?.message ?? 'No se pudo cargar el contenido')
-            } finally {
-                if (mounted) setLoading(false)
-            }
-        }
-        load()
-        return () => {
-            mounted = false
-        }
-    }, [dojoId, contentId])
-
-    const embedUrl = useMemo(() => {
-        if (!content?.url) return null
-        if (content.type === 'VIDEO') return toYouTubeEmbed(content.url) ?? content.url
-        return content.url
-    }, [content])
-
-    if (loading) return <div className="card">Cargando…</div>
-
-    if (err) {
-        return (
-            <div className="stack">
-                <div className="card">
-                    <h3 style={{ marginTop: 0 }}>No se pudo abrir el contenido</h3>
-                    <p className="muted">{err}</p>
-                </div>
-                <button className="button secondary" onClick={() => navigate(-1)}>
-                    ← Volver
-                </button>
-            </div>
-        )
+  useEffect(() => {
+    let mounted = true
+    async function load() {
+      try {
+        if (!dojoId || !contentId) return
+        setLoading(true)
+        setErr(null)
+        const res = await api.get<Content>(`/dojos/${dojoId}/contents/${contentId}`)
+        if (!mounted) return
+        setContent(res.data)
+      } catch (e: any) {
+        if (!mounted) return
+        setErr(getNetworkErrorMessage(e) ?? e?.response?.data?.message ?? 'No se pudo cargar el contenido')
+      } finally {
+        if (mounted) setLoading(false)
+      }
     }
+    load()
+    return () => {
+      mounted = false
+    }
+  }, [dojoId, contentId])
 
-    if (!content) return null
+  const embedUrl = useMemo(() => {
+    if (!content?.url) return null
+    if (content.type === 'VIDEO') return toYouTubeEmbed(content.url) ?? content.url
+    return content.url
+  }, [content])
 
+  const handleOpenExternal = async (url: string) => {
+    try {
+      setOpening(true)
+      await openExternalUrl(url)
+    } finally {
+      setOpening(false)
+    }
+  }
+
+  const handleComplete = async () => {
+    if (!contentId) return
+    try {
+      setCompleting(true)
+      setCompleteMsg(null)
+      await completeMyContent(contentId)
+      setCompleted(true)
+      setCompleteMsg('Contenido marcado como completado.')
+    } catch (e) {
+      setCompleteMsg(getNetworkErrorMessage(e) ?? 'No se pudo marcar como completado.')
+    } finally {
+      setCompleting(false)
+    }
+  }
+
+  if (loading) return <LoadingCard message="Cargando contenido…" />
+
+  if (err) {
     return (
-        <div className="stack">
-            <div className="card">
-                <h2 style={{ marginTop: 0 }}>{content.title}</h2>
-                <p className="muted" style={{ marginTop: 6 }}>
-                    {content.type}
-                    {content.gradeId ? ` • ${content.grade?.name ?? 'Por grado'}` : ' • Global'}
-                </p>
-
-                {content.type === 'TEXT' && (
-                    <div className="contentBody">
-                        {content.body ? <p style={{ whiteSpace: 'pre-wrap' }}>{content.body}</p> : <p className="muted">Sin texto.</p>}
-                    </div>
-                )}
-
-                {content.type === 'LINK' && (
-                    <div style={{ marginTop: 12 }}>
-                        {content.url ? (
-                            <a className="button" href={content.url} target="_blank" rel="noreferrer">
-                                Abrir link
-                            </a>
-                        ) : (
-                            <p className="muted">Sin URL.</p>
-                        )}
-                    </div>
-                )}
-
-                {content.type === 'PDF' && (
-                    <div style={{ marginTop: 12 }}>
-                        {content.url ? (
-                            <iframe
-                                title="pdf"
-                                src={content.url}
-                                style={{ width: '100%', height: 700, border: '1px solid var(--border)', borderRadius: 12 }}
-                            />
-                        ) : (
-                            <p className="muted">Este PDF no tiene URL asociada.</p>
-                        )}
-                    </div>
-                )}
-
-                {content.type === 'VIDEO' && (
-                    <div style={{ marginTop: 12 }}>
-                        {embedUrl ? (
-                            <iframe
-                                title="video"
-                                src={embedUrl}
-                                style={{ width: '100%', height: 500, border: '1px solid var(--border)', borderRadius: 12 }}
-                                allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
-                                allowFullScreen
-                            />
-                        ) : (
-                            <p className="muted">Este video no tiene URL asociada.</p>
-                        )}
-                    </div>
-                )}
-            </div>
-
-            <button className="button secondary" onClick={() => navigate(-1)} style={{ width: 'fit-content' }}>
-                ← Volver
-            </button>
+      <div className="stack">
+        <div className="card">
+          <h3 style={{ marginTop: 0 }}>No se pudo abrir el contenido</h3>
+          <p className="muted">{err}</p>
         </div>
+        <button className="button secondary" onClick={() => navigate(-1)}>
+          ← Volver
+        </button>
+      </div>
     )
+  }
+
+  if (!content) return null
+
+  const videoUrl = content.url ?? ''
+  const showNativeVideoPlayer =
+    content.type === 'VIDEO' && videoUrl && isDirectVideoUrl(videoUrl) && !isYouTubeUrl(videoUrl)
+  const showNativeExternalVideo =
+    native && content.type === 'VIDEO' && videoUrl && isYouTubeUrl(videoUrl)
+  const showWebVideoEmbed =
+    content.type === 'VIDEO' && embedUrl && !showNativeVideoPlayer && !showNativeExternalVideo
+
+  return (
+    <div className="stack">
+      <PageHeader title={content.title} subtitle={`${content.type}${content.gradeId ? ` · ${content.grade?.name ?? 'Por grado'}` : ' · Global'}`} />
+
+      <div className="card">
+        {content.type === 'TEXT' && (
+          <div className="contentBody">
+            {content.body ? (
+              <p style={{ whiteSpace: 'pre-wrap' }}>{content.body}</p>
+            ) : (
+              <p className="muted">Sin texto.</p>
+            )}
+          </div>
+        )}
+
+        {content.type === 'LINK' && (
+          <div style={{ marginTop: 12 }}>
+            {content.url ? (
+              <button
+                className="button"
+                type="button"
+                disabled={opening}
+                onClick={() => void handleOpenExternal(content.url!)}
+              >
+                {opening ? 'Abriendo…' : native ? 'Abrir enlace' : 'Abrir link'}
+              </button>
+            ) : (
+              <p className="muted">Sin URL.</p>
+            )}
+          </div>
+        )}
+
+        {content.type === 'PDF' && (
+          <div style={{ marginTop: 12 }}>
+            {content.url ? (
+              native ? (
+                <div className="stack">
+                  <p className="muted">
+                    En móvil el PDF se abre en el visor del sistema para mejor lectura.
+                  </p>
+                  <button
+                    className="button"
+                    type="button"
+                    disabled={opening}
+                    onClick={() => void handleOpenExternal(content.url!)}
+                  >
+                    {opening ? 'Abriendo…' : 'Abrir PDF'}
+                  </button>
+                </div>
+              ) : (
+                <iframe
+                  title="pdf"
+                  src={content.url}
+                  style={{
+                    width: '100%',
+                    height: 700,
+                    border: '1px solid var(--border)',
+                    borderRadius: 12,
+                  }}
+                />
+              )
+            ) : (
+              <p className="muted">Este PDF no tiene URL asociada.</p>
+            )}
+          </div>
+        )}
+
+        {content.type === 'VIDEO' && (
+          <div style={{ marginTop: 12 }}>
+            {!videoUrl ? (
+              <p className="muted">Este video no tiene URL asociada.</p>
+            ) : showNativeExternalVideo ? (
+              <div className="stack">
+                <p className="muted">Abre el video en YouTube con un toque.</p>
+                <button
+                  className="button"
+                  type="button"
+                  disabled={opening}
+                  onClick={() => void handleOpenExternal(toYouTubeWatchUrl(videoUrl))}
+                >
+                  {opening ? 'Abriendo…' : 'Ver en YouTube'}
+                </button>
+              </div>
+            ) : showNativeVideoPlayer ? (
+              <video
+                className="content-video"
+                controls
+                playsInline
+                preload="metadata"
+                src={videoUrl}
+              />
+            ) : showWebVideoEmbed ? (
+              <iframe
+                title="video"
+                src={embedUrl!}
+                style={{
+                  width: '100%',
+                  height: 500,
+                  border: '1px solid var(--border)',
+                  borderRadius: 12,
+                }}
+                allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+                allowFullScreen
+              />
+            ) : native ? (
+              <button
+                className="button"
+                type="button"
+                disabled={opening}
+                onClick={() => void handleOpenExternal(videoUrl)}
+              >
+                {opening ? 'Abriendo…' : 'Abrir video'}
+              </button>
+            ) : (
+              <p className="muted">No se pudo reproducir este video.</p>
+            )}
+          </div>
+        )}
+      </div>
+
+      {user?.role === 'STUDENT' && contentId && (
+        <div className="card stack">
+          <button
+            className="button"
+            type="button"
+            disabled={completing || completed}
+            onClick={() => void handleComplete()}
+          >
+            {completed ? 'Completado ✓' : completing ? 'Guardando…' : 'Marcar como completado'}
+          </button>
+          {completeMsg ? <p className="muted">{completeMsg}</p> : null}
+        </div>
+      )}
+
+      <button
+        className="button secondary"
+        onClick={() => navigate(-1)}
+        style={{ width: 'fit-content' }}
+      >
+        ← Volver
+      </button>
+    </div>
+  )
 }

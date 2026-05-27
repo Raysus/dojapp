@@ -1,0 +1,22 @@
+# Dependencies
+node_modules
+npm-debug.log
+dist
+coverage
+.env
+.env.*
+!.env.example
+
+# Tests / dev
+test
+*.spec.ts
+.eslintrc*
+.prettierrc
+
+# Git
+.git
+.gitignore
+
+# IDE
+.vscode
+.idea

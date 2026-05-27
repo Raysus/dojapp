@@ -40,6 +40,22 @@ type StudentContentsByDojo = {
   }[];
 };
 
+type StudentStatsByDojo = {
+  dojoId: string
+  dojoName: string
+  grade: string
+  progress: {
+    completed: number
+    total: number
+    percentage: number
+  }
+  attendance: {
+    attendedClasses: number
+    totalClasses: number
+    percentage: number
+  }
+}
+
 
 @Injectable()
 export class StudentsService {
@@ -67,7 +83,8 @@ export class StudentsService {
     dojoId: string,
     authUser: { sub: string; role: UserRole }
   ) {
-    await this.authz.assertProfessorInDojo(
+    // 🔐 permiso real
+    await this.authz.assertInstructorInDojo(
       authUser.sub,
       dojoId
     )
@@ -98,12 +115,14 @@ export class StudentsService {
     newGradeId: string,
     performedById: string
   ) {
+    // 1. Validar permisos (profesor/instructor)
     await this.authz.assertDojoRole(
       performedById,
       dojoId,
       [DojoRole.PROFESSOR, DojoRole.INSTRUCTOR]
     );
 
+    // 2. Obtener dojo + estilo
     const dojo = await this.prisma.dojo.findUnique({
       where: { id: dojoId },
       select: { styleId: true },
@@ -113,7 +132,9 @@ export class StudentsService {
       throw new NotFoundException('Dojo no existe');
     }
 
+    // 3. Verificar que el alumno pertenece al dojo
     await this.authz.assertStudentInDojo(studentId, dojoId);
+    // 4. Obtener UserStyle del alumno
     const userStyle = await this.prisma.userStyle.findUnique({
       where: {
         userId_styleId: {
@@ -130,6 +151,7 @@ export class StudentsService {
       throw new NotFoundException('El alumno no tiene estilo asignado');
     }
 
+    // 5. Obtener nuevo grado
     const newGrade = await this.prisma.grade.findUnique({
       where: { id: newGradeId },
     });
@@ -138,19 +160,29 @@ export class StudentsService {
       throw new BadRequestException('Grado inválido para este estilo');
     }
 
+    // 6. Validar progresión
     if (newGrade.order <= userStyle.grade.order) {
       throw new BadRequestException(
         'El nuevo grado debe ser superior al actual'
       );
     }
 
-    return this.prisma.userStyle.update({
+    // 7. Actualizar grado
+    const updated = await this.prisma.userStyle.update({
       where: { id: userStyle.id },
       data: { gradeId: newGradeId },
       include: {
         grade: true,
       },
     });
+
+    await this.prisma.studentGrade.upsert({
+      where: { userId_dojoId: { userId: studentId, dojoId } },
+      update: { gradeId: newGradeId },
+      create: { userId: studentId, dojoId, gradeId: newGradeId },
+    });
+
+    return updated;
   }
 
   async updateGrade(
@@ -159,8 +191,10 @@ export class StudentsService {
     gradeId: string,
     professorId: string,
   ) {
-    await this.authz.assertProfessorInDojo(professorId, dojoId);
+    // 1. Verificar que el profesor pertenece al dojo
+    await this.authz.assertInstructorInDojo(professorId, dojoId);
 
+    // 2. Buscar la membresía del alumno
     const membership = await this.authz.getMembership(studentId, dojoId);
 
     if (!membership) {
@@ -170,6 +204,7 @@ export class StudentsService {
     if (membership.role !== DojoRole.STUDENT) {
       throw new ForbiddenException('El usuario no es estudiante de este dojo');
     }
+    // 3. Validar que el grado pertenece al mismo estilo del dojo
     const grade = await this.prisma.grade.findUnique({
       where: { id: gradeId },
     });
@@ -177,7 +212,8 @@ export class StudentsService {
     if (!grade || grade.styleId !== membership.dojo.styleId) {
       throw new BadRequestException('Grado inválido para este dojo');
     }
-    return this.prisma.studentGrade.upsert({
+    // 4. Actualizar o crear el StudentGrade
+    const studentGrade = await this.prisma.studentGrade.upsert({
       where: {
         userId_dojoId: {
           userId: studentId,
@@ -193,6 +229,16 @@ export class StudentsService {
         gradeId,
       },
     });
+
+    await this.prisma.userStyle.upsert({
+      where: {
+        userId_styleId: { userId: studentId, styleId: membership.dojo.styleId },
+      },
+      update: { gradeId },
+      create: { userId: studentId, styleId: membership.dojo.styleId, gradeId },
+    });
+
+    return studentGrade;
   }
 
   async getStudentGrade(dojoId: string, studentId: string) {
@@ -234,9 +280,11 @@ export class StudentsService {
       throw new ForbiddenException('No eres estudiante');
     }
 
+    // 👇 acá luego usas el grado asignado
     const grade = await this.prisma.grade.findFirst({
       where: {
         styleId: membership.dojo.styleId,
+        // luego: gradeId del alumno
       },
     });
     if (!grade) {
@@ -258,8 +306,10 @@ export class StudentsService {
     studentId: string,
     gradeId: string,
   ) {
+    // 1️⃣ Validar permisos
     await this.authz.assertInstructorInDojo(professorId, dojoId);
 
+    // 2️⃣ Obtener dojo
     const dojo = await this.prisma.dojo.findUnique({
       where: { id: dojoId },
     });
@@ -268,6 +318,7 @@ export class StudentsService {
       throw new ForbiddenException('Dojo no encontrado');
     }
 
+    // 3️⃣ Validar grado
     const grade = await this.prisma.grade.findUnique({
       where: { id: gradeId },
     });
@@ -276,8 +327,10 @@ export class StudentsService {
       throw new ForbiddenException('Grado no pertenece al estilo del dojo');
     }
 
+    // 4️⃣ Validar estudiante en dojo
     await this.authz.assertStudentInDojo(studentId, dojoId);
-    return this.prisma.studentGrade.upsert({
+    // 5️⃣ Upsert del grado
+    const studentGrade = await this.prisma.studentGrade.upsert({
       where: {
         userId_dojoId: {
           userId: studentId,
@@ -293,6 +346,16 @@ export class StudentsService {
         gradeId,
       },
     });
+
+    await this.prisma.userStyle.upsert({
+      where: {
+        userId_styleId: { userId: studentId, styleId: dojo.styleId },
+      },
+      update: { gradeId },
+      create: { userId: studentId, styleId: dojo.styleId, gradeId },
+    });
+
+    return studentGrade;
   }
 
   async getAvailableContents(userId: string) {
@@ -333,13 +396,92 @@ export class StudentsService {
     return results;
   }
 
+  /**
+   * Student self-service: stats per dojo (progress + attendance).
+   *
+   * - Progress is computed over the same visible contents as /students/me/contents
+   *   (global + up to the student's grade in each dojo).
+   * - Attendance is computed over distinct attendance days for the dojo.
+   */
+  async getMyStats(userId: string): Promise<StudentStatsByDojo[]> {
+    const visible = await this.getAvailableContents(userId)
+
+    // Completed content ids for the user (global across dojos/styles)
+    const completedIds = new Set(
+      (
+        await this.prisma.studentContent.findMany({
+          where: { userId, completed: true },
+          select: { contentId: true },
+        })
+      ).map((x) => x.contentId),
+    )
+
+    const dojoIds = visible.map((v) => v.dojoId)
+    const [totalDaysByDojo, attendedByDojo] = await Promise.all([
+      this.prisma.attendance.groupBy({
+        by: ['dojoId', 'date'],
+        where: { dojoId: { in: dojoIds } },
+      }),
+      this.prisma.attendance.groupBy({
+        by: ['dojoId'],
+        where: { dojoId: { in: dojoIds }, userId, present: true },
+        _count: { _all: true },
+      }),
+    ])
+
+    const totalClassesMap = new Map<string, number>()
+    for (const row of totalDaysByDojo) {
+      totalClassesMap.set(row.dojoId, (totalClassesMap.get(row.dojoId) ?? 0) + 1)
+    }
+
+    const attendedMap = new Map<string, number>()
+    for (const row of attendedByDojo) {
+      attendedMap.set(row.dojoId, row._count._all)
+    }
+
+    return visible.map((v) => {
+      const total = v.contents.length
+      const completed = v.contents.filter((c) => completedIds.has(c.id)).length
+      const percentage = total ? Math.round((completed / total) * 100) : 0
+
+      const totalClasses = totalClassesMap.get(v.dojoId) ?? 0
+      const attendedClasses = attendedMap.get(v.dojoId) ?? 0
+      const attendancePercentage = totalClasses
+        ? Math.round((attendedClasses / totalClasses) * 100)
+        : 0
+
+      return {
+        dojoId: v.dojoId,
+        dojoName: v.dojoName,
+        grade: v.grade,
+        progress: {
+          completed,
+          total,
+          percentage,
+        },
+        attendance: {
+          attendedClasses,
+          totalClasses,
+          percentage: attendancePercentage,
+        },
+      }
+    })
+  }
+  /**
+   * Professor/Instructor helper: list the contents that are visible for a given student in a dojo
+   * (global contents + contents up to the student's grade in that dojo).
+   *
+   * This does NOT depend on progress/unlocks.
+   */
   async getVisibleContentsForStudentInDojo(
     studentId: string,
     dojoId: string,
     authUser: { sub: string; role: UserRole },
   ) {
+    // Permiso: profesor/instructor en el dojo
     await this.authz.assertDojoRole(authUser.sub, dojoId, [DojoRole.PROFESSOR, DojoRole.INSTRUCTOR]);
 
+    // Grado del estudiante en este dojo
     const sg = await this.prisma.studentGrade.findUnique({
       where: { userId_dojoId: { userId: studentId, dojoId } },
       include: {
@@ -376,7 +518,12 @@ export class StudentsService {
     };
   }
 
+
+
+
+
   async getContentsForStudent(userId: string) {
+    // 1️⃣ Dojos donde el alumno es miembro
     const memberships = await this.prisma.dojoMembership.findMany({
       where: {
         userId,
@@ -394,6 +541,7 @@ export class StudentsService {
     const results: StudentContentsByDojo[] = [];
 
     for (const membership of memberships) {
+      // 2️⃣ Grado actual del alumno en ese dojo
       const studentGrade = await this.prisma.studentGrade.findUnique({
         where: {
           userId_dojoId: {
@@ -408,6 +556,7 @@ export class StudentsService {
 
       if (!studentGrade) continue;
 
+      // 3️⃣ Contenido permitido por grado
       const contents = await this.prisma.content.findMany({
         where: {
           styleId: membership.dojo.styleId,
@@ -547,14 +696,39 @@ export class StudentsService {
     }));
   }
 
+  /**
+   * Student self endpoint: mark a content as completed (idempotent).
+   */
   async completeContentForStudent(userId: string, contentId: string) {
     const content = await this.prisma.content.findUnique({
       where: { id: contentId },
-      select: { id: true },
+      include: { grade: true },
     });
 
     if (!content) {
       throw new NotFoundException('Contenido no existe');
+    }
+
+    const studentGrades = await this.prisma.studentGrade.findMany({
+      where: {
+        userId,
+        dojo: { styleId: content.styleId },
+      },
+      include: { grade: true },
+    });
+
+    if (studentGrades.length === 0) {
+      throw new ForbiddenException('No tienes acceso a este contenido');
+    }
+
+    const canAccess = studentGrades.some((sg) => {
+      if (!content.gradeId) return true;
+      if (!sg.grade || !content.grade) return false;
+      return content.grade.order <= sg.grade.order;
+    });
+
+    if (!canAccess) {
+      throw new ForbiddenException('Contenido no disponible para tu grado');
     }
 
     return this.prisma.studentContent.upsert({
@@ -569,6 +743,9 @@ export class StudentsService {
     });
   }
 
+  /**
+   * Professor/Instructor: toggle completion status for a student on a given dojo.
+   */
   async toggleStudentContent(
     performedById: string,
     dojoId: string,

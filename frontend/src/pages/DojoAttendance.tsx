@@ -1,6 +1,11 @@
 import { useEffect, useMemo, useState } from 'react';
 import { Link, useParams } from 'react-router-dom';
+import { getNetworkErrorMessage } from '../hooks/useNetworkStatus';
 import { getAttendanceForDate, markAttendance } from '../services/professor.service';
+import PageHeader from '../components/ui/PageHeader';
+import StatCard from '../components/ui/StatCard';
+import LoadingCard from '../components/ui/LoadingCard';
+import EmptyState from '../components/ui/EmptyState';
 
 function toISODate(d: Date) {
   const y = d.getFullYear();
@@ -11,10 +16,10 @@ function toISODate(d: Date) {
 
 export default function DojoAttendance() {
   const { dojoId } = useParams();
-
   const [date, setDate] = useState<string>(() => toISODate(new Date()));
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
+  const [saved, setSaved] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [items, setItems] = useState<Array<{ userId: string; name: string; present: boolean }>>([]);
 
@@ -24,18 +29,18 @@ export default function DojoAttendance() {
       try {
         setLoading(true);
         setError(null);
+        setSaved(false);
         const data = await getAttendanceForDate(dojoId!, date);
         if (!mounted) return;
         setItems(data.map(x => ({ userId: x.userId, name: x.name, present: x.present })));
       } catch (e) {
         if (!mounted) return;
-        setError('No se pudo cargar la asistencia.');
+        setError(getNetworkErrorMessage(e) ?? 'No se pudo cargar la asistencia.');
       } finally {
-        if (!mounted) return;
-        setLoading(false);
+        if (mounted) setLoading(false);
       }
     }
-    if (dojoId) load();
+    if (dojoId) void load();
     return () => {
       mounted = false;
     };
@@ -44,6 +49,7 @@ export default function DojoAttendance() {
   const presentCount = useMemo(() => items.filter(i => i.present).length, [items]);
 
   const toggle = (userId: string) => {
+    setSaved(false);
     setItems(prev => prev.map(i => (i.userId === userId ? { ...i, present: !i.present } : i)));
   };
 
@@ -55,71 +61,85 @@ export default function DojoAttendance() {
         dojoId!,
         items.map(i => ({ userId: i.userId, present: i.present, date })),
       );
+      setSaved(true);
     } catch (e) {
-      setError('No se pudo guardar la asistencia.');
+      setError(getNetworkErrorMessage(e) ?? 'No se pudo guardar la asistencia.');
     } finally {
       setSaving(false);
     }
   };
 
   return (
-    <div>
-      <h2>✅ Asistencia</h2>
-      <Link className="link" to="/professor">← Volver</Link>
-
-      <div className="divider" />
+    <div className="stack">
+      <PageHeader
+        title="Asistencia"
+        subtitle="Marca presente o ausente y guarda la lista del día."
+        action={
+          <Link className="link" to="/professor">
+            ← Volver
+          </Link>
+        }
+      />
 
       <div className="card">
-        <div className="grid" style={{ gridTemplateColumns: 'repeat(3, minmax(0, 1fr))' }}>
+        <div className="stat-grid">
           <div>
-            <div className="muted">Fecha</div>
+            <label className="muted" htmlFor="attendance-date">
+              Fecha
+            </label>
             <input
+              id="attendance-date"
+              className="input"
               type="date"
               value={date}
-              onChange={(e) => setDate(e.target.value)}
-              style={{ width: '100%', padding: 10, borderRadius: 10, border: '1px solid rgba(255,255,255,0.15)', background: 'transparent', color: 'inherit' }}
+              onChange={e => setDate(e.target.value)}
+              style={{ marginTop: 8 }}
             />
           </div>
-
-          <div>
-            <div className="muted">Presentes</div>
-            <div style={{ fontSize: 28, fontWeight: 700 }}>{presentCount}/{items.length}</div>
-          </div>
-
-          <div style={{ display: 'flex', alignItems: 'flex-end', justifyContent: 'flex-end' }}>
-            <button className="button" onClick={save} disabled={saving || loading}>
+          <StatCard
+            label="Presentes"
+            value={`${presentCount}/${items.length}`}
+            hint="Alumnos marcados"
+            accent="success"
+          />
+          <div style={{ display: 'flex', alignItems: 'flex-end' }}>
+            <button className="button" type="button" onClick={() => void save()} disabled={saving || loading}>
               {saving ? 'Guardando…' : 'Guardar asistencia'}
             </button>
           </div>
         </div>
 
-        {error && <p className="alert error" style={{ marginTop: 12 }}>{error}</p>}
+        {saved ? <p className="pill" style={{ marginTop: 12 }}>Lista guardada correctamente</p> : null}
+        {error ? <p className="alert error" style={{ marginTop: 12 }}>{error}</p> : null}
       </div>
 
       {loading ? (
-        <p>Cargando alumnos…</p>
+        <LoadingCard message="Cargando alumnos…" />
+      ) : items.length === 0 ? (
+        <EmptyState
+          icon="👥"
+          title="Sin alumnos"
+          description="Este dojo no tiene alumnos registrados todavía."
+        />
       ) : (
         <div className="card">
-          <h3>Alumnos</h3>
-          {items.length === 0 ? (
-            <p>No hay alumnos en este dojo.</p>
-          ) : (
-            <ul style={{ listStyle: 'none', padding: 0, margin: 0 }}>
-              {items.map(i => (
-                <li
-                  key={i.userId}
-                  className="student-item"
-                  onClick={() => toggle(i.userId)}
-                  role="button"
-                  tabIndex={0}
-                  onKeyDown={(e) => {
-                    if (e.key === 'Enter' || e.key === ' ') {
-                      e.preventDefault();
-                      toggle(i.userId);
-                    }
-                  }}
-                  style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}
-                >
+          <h3>Lista de alumnos</h3>
+          <ul className="content-list" style={{ marginTop: 12 }}>
+            {items.map(i => (
+              <li
+                key={i.userId}
+                className={`student-item ${i.present ? 'present' : ''}`}
+                onClick={() => toggle(i.userId)}
+                onKeyDown={e => {
+                  if (e.key === 'Enter' || e.key === ' ') {
+                    e.preventDefault();
+                    toggle(i.userId);
+                  }
+                }}
+                role="button"
+                tabIndex={0}
+              >
+                <div className="row" style={{ justifyContent: 'space-between', width: '100%' }}>
                   <span>👤 {i.name}</span>
                   <label style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
                     <span className="muted">Presente</span>
@@ -127,13 +147,13 @@ export default function DojoAttendance() {
                       type="checkbox"
                       checked={i.present}
                       onChange={() => toggle(i.userId)}
-                      onClick={(e) => e.stopPropagation()}
+                      onClick={e => e.stopPropagation()}
                     />
                   </label>
-                </li>
-              ))}
-            </ul>
-          )}
+                </div>
+              </li>
+            ))}
+          </ul>
         </div>
       )}
     </div>

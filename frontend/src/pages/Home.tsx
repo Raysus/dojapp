@@ -1,14 +1,14 @@
-import { useEffect } from 'react'
-import Login from './Login'
-import Dashboard from './Dashboard'
-import { useAuth } from '../auth/AuthContext'
+import { Navigate } from "react-router-dom";
+import { useAuth } from "../auth/AuthContext";
 
 export default function Home() {
-  const { user, loading } = useAuth()
+  const { user } = useAuth();
 
-  useEffect(() => { }, [loading])
+  if (!user) return <Navigate to="/login" replace />;
 
-  if (loading) return null
+  if (user.role === "ADMIN") return <Navigate to="/admin" replace />;
+  if (user.role === "PROFESSOR") return <Navigate to="/professor" replace />;
+  if (user.role === "STUDENT") return <Navigate to="/student" replace />;
 
-  return user ? <Dashboard /> : <Login />
+  return <Navigate to="/unauthorized" replace />;
 }

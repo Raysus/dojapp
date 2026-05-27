@@ -3,6 +3,7 @@ import type { Grade } from './grade';
 export interface StudentContent {
   contentId: string;
   completed: boolean;
+  // backend puede incluir { content } opcionalmente, pero no lo requerimos aquí
 }
 
 export interface Student {

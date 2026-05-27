@@ -1,46 +1,50 @@
-import { useEffect, useMemo, useState } from 'react'
-import { useNavigate } from 'react-router-dom'
-import { getMyDojos, getDojoGrades, getDojoContents } from '../services/dojos.service'
-import { getStudentsByDojo } from '../services/students.service'
+import { useEffect, useMemo, useState } from 'react';
+import { useNavigate } from 'react-router-dom';
+import { getMyDojos, getDojoGrades, getDojoContents } from '../services/dojos.service';
+import { getStudentsByDojo } from '../services/students.service';
+import PageHeader from './ui/PageHeader';
+import EmptyState from './ui/EmptyState';
+import LoadingCard from './ui/LoadingCard';
 
-type Grade = { id: string; name: string; order: number }
-type Content = { id: string; title: string; type: string; gradeId: string | null }
+type Grade = { id: string; name: string; order: number };
+type Content = { id: string; title: string; type: string; gradeId: string | null };
+type Dojo = { id: string; name: string };
 
 export default function ProfessorDashboard() {
-  const [dojos, setDojos] = useState<any[]>([])
-  const [students, setStudents] = useState<any[]>([])
-  const [selectedDojo, setSelectedDojo] = useState<string | null>(null)
-
-  const [grades, setGrades] = useState<Grade[]>([])
-  const [contents, setContents] = useState<Content[]>([])
-  const [loadingDojoData, setLoadingDojoData] = useState(false)
-
-  const navigate = useNavigate()
+  const [dojos, setDojos] = useState<Dojo[]>([]);
+  const [students, setStudents] = useState<any[]>([]);
+  const [selectedDojo, setSelectedDojo] = useState<string | null>(null);
+  const [grades, setGrades] = useState<Grade[]>([]);
+  const [contents, setContents] = useState<Content[]>([]);
+  const [loadingDojos, setLoadingDojos] = useState(true);
+  const [loadingDojoData, setLoadingDojoData] = useState(false);
+  const navigate = useNavigate();
 
   useEffect(() => {
-    getMyDojos().then(setDojos)
-  }, [])
+    getMyDojos()
+      .then(setDojos)
+      .finally(() => setLoadingDojos(false));
+  }, []);
 
   const loadDojo = async (dojoId: string) => {
-    setSelectedDojo(dojoId)
-    setLoadingDojoData(true)
+    setSelectedDojo(dojoId);
+    setLoadingDojoData(true);
     try {
       const [studentsRes, gradesRes, contentsRes] = await Promise.all([
         getStudentsByDojo(dojoId),
         getDojoGrades(dojoId),
         getDojoContents(dojoId),
-      ])
-      setStudents(studentsRes ?? [])
-      setGrades(gradesRes ?? [])
-      setContents(contentsRes ?? [])
+      ]);
+      setStudents(studentsRes ?? []);
+      setGrades(gradesRes ?? []);
+      setContents(contentsRes ?? []);
     } finally {
-      setLoadingDojoData(false)
+      setLoadingDojoData(false);
     }
-  }
+  };
 
   const groupedContents = useMemo(() => {
-    const globals = (contents ?? []).filter(c => !c.gradeId)
-
+    const globals = (contents ?? []).filter(c => !c.gradeId);
     const byGrade = (grades ?? [])
       .slice()
       .sort((a, b) => a.order - b.order)
@@ -48,54 +52,73 @@ export default function ProfessorDashboard() {
         grade: g,
         items: (contents ?? []).filter(c => c.gradeId === g.id),
       }))
-      .filter(group => group.items.length > 0)
+      .filter(group => group.items.length > 0);
 
-    return { globals, byGrade }
-  }, [contents, grades])
+    return { globals, byGrade };
+  }, [contents, grades]);
+
+  if (loadingDojos) return <LoadingCard message="Cargando dojos…" />;
 
   return (
     <div className="stack">
-      <div className="row" style={{ alignItems: 'center', justifyContent: 'space-between' }}>
-        <h2 style={{ margin: 0 }}>Mis Dojos</h2>
-      </div>
+      <PageHeader
+        title="Panel del profesor"
+        subtitle="Gestiona alumnos, contenidos y accesos rápidos por dojo."
+      />
 
-      {dojos.map(dojo => (
-        <div key={dojo.id} className={`card dojo-card ${selectedDojo === dojo.id ? 'selected' : ''}`}>
-          <div className="row" style={{ justifyContent: 'space-between', alignItems: 'center' }}>
-            <h3 style={{ margin: 0 }}>🥋 {dojo.name}</h3>
-
-            <button className="button secondary" onClick={() => loadDojo(dojo.id)}>
-              {selectedDojo === dojo.id ? 'Actualizar' : 'Ver dojo'}
-            </button>
+      {dojos.length === 0 ? (
+        <EmptyState
+          icon="🥋"
+          title="No tienes dojos asignados"
+          description="Pide a un administrador que te asigne a un dojo."
+        />
+      ) : (
+        dojos.map(dojo => (
+          <div
+            key={dojo.id}
+            className={`card dojo-card ${selectedDojo === dojo.id ? 'selected' : ''}`}
+          >
+            <div className="dojo-cardHeader">
+              <div className="dojo-cardTitle">
+                <span className="dojo-cardIcon">🥋</span>
+                <h3>{dojo.name}</h3>
+              </div>
+              <button
+                className={`button ${selectedDojo === dojo.id ? 'ghost' : 'secondary'}`}
+                type="button"
+                onClick={() => void loadDojo(dojo.id)}
+              >
+                {selectedDojo === dojo.id ? 'Actualizar' : 'Abrir dojo'}
+              </button>
+            </div>
           </div>
-        </div>
-      ))}
+        ))
+      )}
 
-      {selectedDojo && (
+      {selectedDojo ? (
         <>
           <div className="card">
-            <div className="row" style={{ justifyContent: 'space-between', alignItems: 'center' }}>
+            <div className="dojo-cardHeader">
               <div>
-                <h3 style={{ margin: 0 }}>Panel del Dojo</h3>
-                <p className="muted" style={{ margin: '6px 0 0' }}>
-                  Accesos rápidos y resumen de contenidos
-                </p>
+                <h3>Acciones rápidas</h3>
+                <p className="muted">Herramientas del dojo seleccionado</p>
               </div>
-
-              <div className="row" style={{ gap: 10, flexWrap: 'wrap' }}>
+              <div className="actionBar">
                 <button
                   className="button"
+                  type="button"
                   onClick={() => navigate(`/dojos/${selectedDojo}/stats`)}
                   disabled={loadingDojoData}
                 >
-                  📊 Estadísticas
+                  Estadísticas
                 </button>
                 <button
-                  className="button"
+                  className="button ghost"
+                  type="button"
                   onClick={() => navigate(`/dojos/${selectedDojo}/attendance`)}
                   disabled={loadingDojoData}
                 >
-                  ✅ Asistencia
+                  Asistencia
                 </button>
               </div>
             </div>
@@ -103,83 +126,94 @@ export default function ProfessorDashboard() {
 
           <div className="grid-2">
             <div className="card">
-              <h3 style={{ marginTop: 0 }}>Alumnos</h3>
-              {loadingDojoData && <p className="muted">Cargando…</p>}
-              {!loadingDojoData && students.length === 0 && <p>No hay alumnos</p>}
-
-              <ul style={{ marginTop: 12 }}>
-                {students.map(student => (
-                  <li
-                    key={student.id}
-                    className="student-item"
-                    onClick={() => navigate(`/dojos/${selectedDojo}/students/${student.id}`)}
-                    role="button"
-                    tabIndex={0}
-                    onKeyDown={(e) => {
-                      if (e.key === 'Enter' || e.key === ' ') {
+              <h3>Alumnos</h3>
+              {loadingDojoData ? (
+                <LoadingCard message="Cargando alumnos…" />
+              ) : students.length === 0 ? (
+                <p className="muted">No hay alumnos en este dojo.</p>
+              ) : (
+                <ul className="content-list" style={{ marginTop: 12 }}>
+                  {students.map(student => (
+                    <li
+                      key={student.id}
+                      className="student-item"
+                      onClick={() =>
                         navigate(`/dojos/${selectedDojo}/students/${student.id}`)
                       }
-                    }}
-                  >
-                    👤 {student?.name ?? student?.user?.name ?? 'Alumno'}
-                  </li>
-                ))}
-              </ul>
+                      onKeyDown={e => {
+                        if (e.key === 'Enter' || e.key === ' ') {
+                          navigate(`/dojos/${selectedDojo}/students/${student.id}`);
+                        }
+                      }}
+                      role="button"
+                      tabIndex={0}
+                    >
+                      👤 {student?.name ?? student?.user?.name ?? 'Alumno'}
+                    </li>
+                  ))}
+                </ul>
+              )}
             </div>
 
             <div className="card">
-              <h3 style={{ marginTop: 0 }}>Contenidos del dojo</h3>
-              <p className="muted" style={{ marginTop: 6 }}>
-                Primero globales, luego por grado (ordenado).
-              </p>
+              <h3>Contenidos del dojo</h3>
+              <p className="muted">Globales primero, luego por grado.</p>
 
-              {loadingDojoData && <p className="muted">Cargando…</p>}
-
-              {!loadingDojoData && (
+              {loadingDojoData ? (
+                <LoadingCard message="Cargando contenidos…" />
+              ) : (
                 <>
-                  <div style={{ marginTop: 12 }}>
-                    <div className="muted" style={{ fontSize: 12, marginBottom: 6 }}>
+                  <div style={{ marginTop: 14 }}>
+                    <div className="pill" style={{ marginBottom: 10 }}>
                       Globales
                     </div>
-
                     {groupedContents.globals.length === 0 ? (
-                      <p className="muted" style={{ margin: 0 }}>No hay contenidos globales.</p>
+                      <p className="muted">No hay contenidos globales.</p>
                     ) : (
-                      <ul>
+                      <ul className="content-list">
                         {groupedContents.globals.map(c => (
                           <li key={c.id} className="content-item unlocked">
-                            <b>{c.title}</b>
-                            <div className="muted" style={{ fontSize: 12 }}>{c.type} • Global</div>
+                            <div className="content-listItem">
+                              <div className="content-listItemMain">
+                                <div className="content-listItemTitle">{c.title}</div>
+                                <div className="content-listItemMeta">{c.type} • Global</div>
+                              </div>
+                            </div>
                           </li>
                         ))}
                       </ul>
                     )}
                   </div>
 
-                  <div style={{ marginTop: 16 }}>
-                    <div className="muted" style={{ fontSize: 12, marginBottom: 6 }}>
+                  <div style={{ marginTop: 18 }}>
+                    <div className="pill" style={{ marginBottom: 10 }}>
                       Por grado
                     </div>
-
                     {groupedContents.byGrade.length === 0 ? (
-                      <p className="muted" style={{ margin: 0 }}>No hay contenidos por grado.</p>
+                      <p className="muted">No hay contenidos por grado.</p>
                     ) : (
                       groupedContents.byGrade.map(group => (
                         <div key={group.grade.id} style={{ marginBottom: 14 }}>
-                          <div style={{ fontWeight: 600 }}>
+                          <h4 style={{ marginBottom: 8 }}>
                             {group.grade.order}. {group.grade.name}
-                          </div>
-                          <ul style={{ marginTop: 8 }}>
+                          </h4>
+                          <ul className="content-list">
                             {group.items.map(c => (
                               <li
                                 key={c.id}
                                 className="content-item unlocked"
-                                onClick={() => navigate(`/dojos/${selectedDojo}/contents/${c.id}`)}
+                                onClick={() =>
+                                  navigate(`/dojos/${selectedDojo}/contents/${c.id}`)
+                                }
                                 role="button"
                                 tabIndex={0}
                               >
-                                <b>{c.title}</b>
-                                <div className="muted" style={{ fontSize: 12 }}>{c.type}{c.gradeId ? '' : ' • Global'}</div>
+                                <div className="content-listItem">
+                                  <div className="content-listItemMain">
+                                    <div className="content-listItemTitle">{c.title}</div>
+                                    <div className="content-listItemMeta">{c.type}</div>
+                                  </div>
+                                </div>
                               </li>
                             ))}
                           </ul>
@@ -192,7 +226,7 @@ export default function ProfessorDashboard() {
             </div>
           </div>
         </>
-      )}
+      ) : null}
     </div>
-  )
+  );
 }

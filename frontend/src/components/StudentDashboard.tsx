@@ -1,77 +1,137 @@
-import { useEffect, useState } from 'react'
-import { useNavigate } from 'react-router-dom'
-import { getMyVisibleContents } from '../services/students.service'
-
-type Content = {
-  id: string
-  title: string
-  type: string
-  gradeId?: string | null
-}
+import { useEffect, useState } from 'react';
+import { useNavigate } from 'react-router-dom';
+import { getNetworkErrorMessage } from '../hooks/useNetworkStatus';
+import {
+  getMyContents,
+  getMyStats,
+  type StudentContentsByDojo,
+  type StudentStatsByDojo,
+} from '../services/students.service';
+import PageHeader from './ui/PageHeader';
+import StatCard from './ui/StatCard';
+import EmptyState from './ui/EmptyState';
+import LoadingCard from './ui/LoadingCard';
 
 export default function StudentDashboard() {
-  const [data, setData] = useState<any>(null)
-  const [loading, setLoading] = useState(true)
-  const navigate = useNavigate()
+  const [items, setItems] = useState<StudentContentsByDojo[]>([]);
+  const [stats, setStats] = useState<StudentStatsByDojo[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+  const navigate = useNavigate();
 
   useEffect(() => {
     async function load() {
       try {
-        const res = await getMyVisibleContents()
-        setData(res)
+        setError(null);
+        const [contents, s] = await Promise.all([
+          getMyContents(),
+          getMyStats().catch(() => [] as StudentStatsByDojo[]),
+        ]);
+        setItems(contents);
+        setStats(s);
       } catch (e) {
-        console.error(e)
+        setError(getNetworkErrorMessage(e) ?? 'No se pudieron cargar tus contenidos.');
       } finally {
-        setLoading(false)
+        setLoading(false);
       }
     }
-    load()
-  }, [])
+    void load();
+  }, []);
 
-  if (loading) return <div className="card">Cargando…</div>
-  if (!data) return <div className="card">No hay información</div>
-
-  const dojo = data.dojo
-  const dojoId = dojo?.id
-  const contents: Content[] = data.contents ?? []
+  if (loading) return <LoadingCard message="Cargando tu progreso…" />;
+  if (error) return <div className="card alert error">{error}</div>;
+  if (!items.length) {
+    return (
+      <EmptyState
+        icon="🥋"
+        title="Sin contenidos disponibles"
+        description="Cuando tu sensei publique material para tu grado, aparecerá aquí."
+      />
+    );
+  }
 
   return (
     <div className="stack">
-      <div className="card">
-        <h2 style={{ marginTop: 0 }}>🥋 {dojo?.name}</h2>
-        <p className="muted" style={{ marginTop: 6 }}>
-          Aquí se muestran todos los contenidos disponibles hasta tu grado.
-        </p>
-      </div>
+      <PageHeader
+        title="Mi entrenamiento"
+        subtitle="Consulta tu progreso, asistencia y contenidos desbloqueados."
+      />
 
-      <div className="card">
-        <h3 style={{ marginTop: 0 }}>Contenidos</h3>
+      {items.map(block => {
+        const dojoStats = stats.find(s => s.dojoId === block.dojoId);
 
-        {contents.length === 0 && (
-          <p className="muted">No hay contenidos disponibles.</p>
-        )}
-
-        <ul style={{ marginTop: 12 }}>
-          {contents.map(c => (
-            <li
-              key={c.id}
-              className="content-item unlocked"
-              onClick={() =>
-                dojoId &&
-                navigate(`/dojos/${dojoId}/contents/${c.id}`)
-              }
-              role="button"
-              tabIndex={0}
-            >
-              <b>{c.title}</b>
-              <div className="muted" style={{ fontSize: 12 }}>
-                {c.type}
-                {c.gradeId ? '' : ' • Global'}
+        return (
+          <section key={block.dojoId} className="stack">
+            <div className="card">
+              <div className="dojo-cardHeader">
+                <div className="dojo-cardTitle">
+                  <span className="dojo-cardIcon">🥋</span>
+                  <div>
+                    <h2>{block.dojoName}</h2>
+                    <p className="muted">Grado: {block.grade}</p>
+                  </div>
+                </div>
+                <span className="pill">{block.contents.length} visibles</span>
               </div>
-            </li>
-          ))}
-        </ul>
-      </div>
+
+              {dojoStats ? (
+                <div className="stat-grid" style={{ marginTop: 16 }}>
+                  <StatCard
+                    label="Progreso"
+                    value={`${dojoStats.progress.percentage}%`}
+                    hint={`${dojoStats.progress.completed}/${dojoStats.progress.total} completados`}
+                    accent="success"
+                  />
+                  <StatCard
+                    label="Asistencia"
+                    value={`${dojoStats.attendance.percentage}%`}
+                    hint={`${dojoStats.attendance.attendedClasses}/${dojoStats.attendance.totalClasses} clases`}
+                  />
+                  <StatCard
+                    label="Contenidos"
+                    value={block.contents.length}
+                    hint="Disponibles ahora"
+                  />
+                </div>
+              ) : null}
+            </div>
+
+            <div className="card">
+              <h3>Contenidos</h3>
+              {block.contents.length === 0 ? (
+                <p className="muted">No hay contenidos disponibles en este dojo.</p>
+              ) : (
+                <ul className="content-list" style={{ marginTop: 14 }}>
+                  {block.contents.map(c => (
+                    <li
+                      key={c.id}
+                      className="content-item unlocked"
+                      onClick={() => navigate(`/dojos/${block.dojoId}/contents/${c.id}`)}
+                      onKeyDown={e => {
+                        if (e.key === 'Enter' || e.key === ' ') {
+                          navigate(`/dojos/${block.dojoId}/contents/${c.id}`);
+                        }
+                      }}
+                      role="button"
+                      tabIndex={0}
+                    >
+                      <div className="content-listItem">
+                        <div className="content-listItemMain">
+                          <div className="content-listItemTitle">{c.title}</div>
+                          <div className="content-listItemMeta">
+                            {c.gradeId ? 'Por grado' : 'Global'}
+                          </div>
+                        </div>
+                        <span className="content-typeBadge">{c.type}</span>
+                      </div>
+                    </li>
+                  ))}
+                </ul>
+              )}
+            </div>
+          </section>
+        );
+      })}
     </div>
-  )
+  );
 }

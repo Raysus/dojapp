@@ -36,6 +36,7 @@ export class AttendanceService {
     takenById: string
     date?: Date
   }) {
+    // 🔐 defensa en profundidad (aunque el controller ya tenga guards)
     await this.authz.assertInstructorInDojo(takenById, dojoId)
 
     const day = startOfDay(date ?? new Date())
@@ -119,6 +120,8 @@ export class AttendanceService {
       orderBy: { user: { name: 'asc' } },
     })
 
+    // Calcula "cantidad de clases" como cantidad de días distintos donde se tomó asistencia.
+    // Como guardamos la fecha normalizada a startOfDay(), esto es consistente.
     const distinctDays = await this.prisma.attendance.groupBy({
       by: ['date'],
       where: { dojoId },

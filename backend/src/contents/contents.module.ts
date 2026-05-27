@@ -1,6 +1,8 @@
 import { Module } from '@nestjs/common';
 import { ContentsService } from './contents.service';
 import { ContentsController } from './contents.controller';
+import { DojoContentsController } from './dojo-contents.controller';
+import { DojoContentsService } from './dojo-contents.service';
 import { PrismaModule } from '../prisma/prisma.module';
 import { AuthorizationModule } from '../authorization/authorization.module';
 
@@ -9,7 +11,7 @@ import { AuthorizationModule } from '../authorization/authorization.module';
     PrismaModule,
     AuthorizationModule,
   ],
-  controllers: [ContentsController],
-  providers: [ContentsService],
+  controllers: [ContentsController, DojoContentsController],
+  providers: [ContentsService, DojoContentsService],
 })
 export class ContentsModule { }

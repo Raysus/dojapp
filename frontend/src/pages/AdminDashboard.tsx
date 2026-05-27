@@ -13,6 +13,9 @@ import {
   type AdminStats,
   type AdminUser,
 } from '../services/admin.service';
+import PageHeader from '../components/ui/PageHeader';
+import StatCard from '../components/ui/StatCard';
+import LoadingCard from '../components/ui/LoadingCard';
 
 type Tab = 'users' | 'content' | 'monitoring';
 
@@ -21,9 +24,11 @@ export default function AdminDashboard() {
 
   const [error, setError] = useState<string | null>(null);
 
+  // monitoring
   const [health, setHealth] = useState<{ ok: boolean; timestamp: string; uptimeSeconds: number } | null>(null);
   const [stats, setStats] = useState<AdminStats | null>(null);
 
+  // users
   const [users, setUsers] = useState<AdminUser[]>([]);
   const [usersLoading, setUsersLoading] = useState(false);
   const [userForm, setUserForm] = useState({
@@ -33,6 +38,7 @@ export default function AdminDashboard() {
     role: 'STUDENT' as 'ADMIN' | 'PROFESSOR' | 'STUDENT',
   });
 
+  // assign membership (admin)
   const [assignForm, setAssignForm] = useState({
     userId: '',
     dojoId: '',
@@ -42,6 +48,7 @@ export default function AdminDashboard() {
   const [assignGrades, setAssignGrades] = useState<AdminGrade[]>([]);
   const [assignLoading, setAssignLoading] = useState(false);
 
+  // content
   const [dojos, setDojos] = useState<AdminDojo[]>([]);
   const [grades, setGrades] = useState<AdminGrade[]>([]);
   const [dojoId, setDojoId] = useState('');
@@ -129,16 +136,19 @@ export default function AdminDashboard() {
     refreshUsers();
     refreshMonitoring();
     loadDojos();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   useEffect(() => {
     loadGrades(dojoId);
     setContentForm(prev => ({ ...prev, gradeId: '' }));
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [dojoId]);
 
   useEffect(() => {
     loadAssignGrades(assignForm.dojoId);
     setAssignForm(prev => ({ ...prev, gradeId: '' }));
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [assignForm.dojoId]);
 
   async function onCreateUser(e: React.FormEvent) {
@@ -207,18 +217,36 @@ export default function AdminDashboard() {
   }
 
   return (
-    <div className="page">
-      <header className="header">
-        <div>
-          <h1>Admin</h1>
-          <p className="muted">Usuarios, contenido, monitoreo y estadísticas.</p>
-        </div>
-        <nav className="tabs">
-          <button className={tab === 'users' ? 'tab active' : 'tab'} onClick={() => setTab('users')}>Usuarios</button>
-          <button className={tab === 'content' ? 'tab active' : 'tab'} onClick={() => setTab('content')}>Contenido</button>
-          <button className={tab === 'monitoring' ? 'tab active' : 'tab'} onClick={() => setTab('monitoring')}>Monitoreo</button>
-        </nav>
-      </header>
+    <div className="stack">
+      <PageHeader
+        title="Panel de administración"
+        subtitle="Usuarios, contenido, monitoreo y estadísticas del sistema."
+        action={
+          <nav className="tabBar" aria-label="Secciones de admin">
+            <button
+              type="button"
+              className={`tabButton ${tab === 'users' ? 'active' : ''}`}
+              onClick={() => setTab('users')}
+            >
+              Usuarios
+            </button>
+            <button
+              type="button"
+              className={`tabButton ${tab === 'content' ? 'active' : ''}`}
+              onClick={() => setTab('content')}
+            >
+              Contenido
+            </button>
+            <button
+              type="button"
+              className={`tabButton ${tab === 'monitoring' ? 'active' : ''}`}
+              onClick={() => setTab('monitoring')}
+            >
+              Monitoreo
+            </button>
+          </nav>
+        }
+      />
 
       {error && (
         <div className="alert error">
@@ -227,29 +255,29 @@ export default function AdminDashboard() {
       )}
 
       {tab === 'users' && (
-        <section >
+        <section className="stack">
           <div className="card">
             <h2>Crear usuario</h2>
-            <form className="form" onSubmit={onCreateUser}>
-              <div className="grid">
-                <label>
+            <form className="form" onSubmit={onCreateUser} style={{ marginTop: 14 }}>
+              <div className="formGrid">
+                <label className="fieldLabel">
                   Nombre
-                  <input value={userForm.name} onChange={e => setUserForm({ ...userForm, name: e.target.value })} required />
+                  <input className="input" value={userForm.name} onChange={e => setUserForm({ ...userForm, name: e.target.value })} required />
                 </label>
 
-                <label>
+                <label className="fieldLabel">
                   Email
-                  <input type="email" value={userForm.email} onChange={e => setUserForm({ ...userForm, email: e.target.value })} required />
+                  <input className="input" type="email" value={userForm.email} onChange={e => setUserForm({ ...userForm, email: e.target.value })} required />
                 </label>
 
-                <label>
+                <label className="fieldLabel">
                   Password
-                  <input type="password" value={userForm.password} onChange={e => setUserForm({ ...userForm, password: e.target.value })} required />
+                  <input className="input" type="password" value={userForm.password} onChange={e => setUserForm({ ...userForm, password: e.target.value })} required />
                 </label>
 
-                <label>
+                <label className="fieldLabel">
                   Rol
-                  <select value={userForm.role} onChange={e => setUserForm({ ...userForm, role: e.target.value as any })}>
+                  <select className="input" value={userForm.role} onChange={e => setUserForm({ ...userForm, role: e.target.value as typeof userForm.role })}>
                     <option value="STUDENT">STUDENT</option>
                     <option value="PROFESSOR">PROFESSOR</option>
                     <option value="ADMIN">ADMIN</option>
@@ -257,9 +285,9 @@ export default function AdminDashboard() {
                 </label>
               </div>
 
-              <div className="row">
-                <button className="btn" type="submit">Crear</button>
-                <button className="btn" type="button" onClick={refreshUsers} disabled={usersLoading}>
+              <div className="row" style={{ marginTop: 14 }}>
+                <button className="button" type="submit">Crear</button>
+                <button className="button secondary" type="button" onClick={refreshUsers} disabled={usersLoading}>
                   {usersLoading ? 'Actualizando…' : 'Refrescar usuarios'}
                 </button>
               </div>
@@ -268,13 +296,13 @@ export default function AdminDashboard() {
 
           <div className="card">
             <h2>Asignar usuario a un dojo</h2>
-            <p className="muted">Sin copiar UUIDs: selecciona usuario, dojo, rol y (si corresponde) grado.</p>
+            <p className="muted" style={{ marginTop: 6 }}>Selecciona usuario, dojo, rol y grado (obligatorio para alumnos).</p>
 
-            <form className="form" onSubmit={onAssignUser}>
-              <div className="grid">
-                <label>
+            <form className="form" onSubmit={onAssignUser} style={{ marginTop: 14 }}>
+              <div className="formGrid">
+                <label className="fieldLabel">
                   Usuario
-                  <select value={assignForm.userId} onChange={e => setAssignForm({ ...assignForm, userId: e.target.value })}>
+                  <select className="input" value={assignForm.userId} onChange={e => setAssignForm({ ...assignForm, userId: e.target.value })}>
                     {users.map(u => (
                       <option key={u.id} value={u.id}>
                         {u.name} — {u.email} ({u.role})
@@ -283,9 +311,9 @@ export default function AdminDashboard() {
                   </select>
                 </label>
 
-                <label>
+                <label className="fieldLabel">
                   Dojo
-                  <select value={assignForm.dojoId} onChange={e => setAssignForm({ ...assignForm, dojoId: e.target.value })}>
+                  <select className="input" value={assignForm.dojoId} onChange={e => setAssignForm({ ...assignForm, dojoId: e.target.value })}>
                     {dojos.map(d => (
                       <option key={d.id} value={d.id}>
                         {d.name}
@@ -294,18 +322,19 @@ export default function AdminDashboard() {
                   </select>
                 </label>
 
-                <label>
+                <label className="fieldLabel">
                   Rol en dojo
-                  <select value={assignForm.dojoRole} onChange={e => setAssignForm({ ...assignForm, dojoRole: e.target.value as any })}>
+                  <select className="input" value={assignForm.dojoRole} onChange={e => setAssignForm({ ...assignForm, dojoRole: e.target.value as typeof assignForm.dojoRole })}>
                     <option value="STUDENT">STUDENT</option>
                     <option value="INSTRUCTOR">INSTRUCTOR</option>
                     <option value="PROFESSOR">PROFESSOR</option>
                   </select>
                 </label>
 
-                <label>
+                <label className="fieldLabel">
                   Grado (solo si STUDENT)
                   <select
+                    className="input"
                     value={assignForm.gradeId}
                     onChange={e => setAssignForm({ ...assignForm, gradeId: e.target.value })}
                     disabled={assignForm.dojoRole !== 'STUDENT'}
@@ -320,13 +349,13 @@ export default function AdminDashboard() {
                 </label>
               </div>
 
-              <div className="row">
-                <button className="btn" type="submit" disabled={assignLoading}>
+              <div className="row" style={{ marginTop: 14 }}>
+                <button className="button" type="submit" disabled={assignLoading}>
                   {assignLoading ? 'Asignando…' : 'Asignar'}
                 </button>
-                <span className="muted">
-                  {selectedAssignDojo ? `Dojo seleccionado: ${selectedAssignDojo.name}` : ''}
-                </span>
+                {selectedAssignDojo ? (
+                  <span className="muted">Dojo seleccionado: {selectedAssignDojo.name}</span>
+                ) : null}
               </div>
             </form>
           </div>
@@ -334,67 +363,71 @@ export default function AdminDashboard() {
           <div className="card">
             <div className="row" style={{ justifyContent: 'space-between' }}>
               <h2>Usuarios</h2>
-              <button className="btn" onClick={refreshUsers} disabled={usersLoading}>
+              <button className="button secondary" onClick={refreshUsers} disabled={usersLoading}>
                 {usersLoading ? 'Actualizando…' : 'Refrescar'}
               </button>
             </div>
 
-            <div className="tableWrap">
-              <table className="table">
-                <thead>
-                  <tr>
-                    <th>Nombre</th>
-                    <th>Email</th>
-                    <th>Rol</th>
-                    <th>Dojos</th>
-                    <th>Creado</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {users.map(u => (
-                    <tr key={u.id}>
-                      <td>{u.name}</td>
-                      <td >{u.email}</td>
-                      <td >{u.role}</td>
-                      <td>
-                        {(u.dojoMemberships ?? []).length === 0 && <span className="muted">—</span>}
-                        {(u.dojoMemberships ?? []).map(m => (
-                          <div key={m.dojoId} className="muted">
-                            <span >{m.dojo?.name ?? m.dojoId}</span> — <span >{m.role}</span>
-                          </div>
-                        ))}
-                      </td>
-                      <td >{new Date(u.createdAt).toLocaleString()}</td>
+            {usersLoading && users.length === 0 ? (
+              <LoadingCard message="Cargando usuarios…" />
+            ) : (
+              <div className="tableWrap">
+                <table className="dataTable">
+                  <thead>
+                    <tr>
+                      <th>Nombre</th>
+                      <th>Email</th>
+                      <th>Rol</th>
+                      <th>Dojos</th>
+                      <th>Creado</th>
                     </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
+                  </thead>
+                  <tbody>
+                    {users.map(u => (
+                      <tr key={u.id}>
+                        <td>{u.name}</td>
+                        <td>{u.email}</td>
+                        <td><span className="pill">{u.role}</span></td>
+                        <td>
+                          {(u.dojoMemberships ?? []).length === 0 && <span className="muted">—</span>}
+                          {(u.dojoMemberships ?? []).map(m => (
+                            <div key={m.dojoId} className="muted">
+                              {m.dojo?.name ?? m.dojoId} — {m.role}
+                            </div>
+                          ))}
+                        </td>
+                        <td className="muted">{new Date(u.createdAt).toLocaleString()}</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            )}
 
             <p className="muted" style={{ marginTop: 12 }}>
-              Tip: si asignas un usuario como <span >STUDENT</span> y seleccionas un grado, se guarda su grado inicial para ese dojo.
+              Tip: si asignas un usuario como STUDENT y seleccionas un grado, se guarda su grado inicial para ese dojo.
             </p>
           </div>
         </section>
       )}
 
       {tab === 'content' && (
-        <section className="card">
+        <section className="card stack">
           <h2>Crear contenido</h2>
 
-          <div className="grid">
-            <label>
+          <div className="formGrid">
+            <label className="fieldLabel">
               Dojo
-              <select value={dojoId} onChange={e => setDojoId(e.target.value)}>
+              <select className="input" value={dojoId} onChange={e => setDojoId(e.target.value)}>
                 {dojos.map(d => (
                   <option key={d.id} value={d.id}>{d.name}</option>
                 ))}
               </select>
             </label>
 
-            <label>
+            <label className="fieldLabel">
               Grado (opcional)
-              <select value={contentForm.gradeId} onChange={e => setContentForm({ ...contentForm, gradeId: e.target.value })}>
+              <select className="input" value={contentForm.gradeId} onChange={e => setContentForm({ ...contentForm, gradeId: e.target.value })}>
                 <option value="">(sin grado)</option>
                 {grades.map(g => (
                   <option key={g.id} value={g.id}>{g.order}. {g.name}</option>
@@ -405,20 +438,20 @@ export default function AdminDashboard() {
 
           {selectedDojo && (
             <p className="muted">
-              Dojo: <span >{selectedDojo.name}</span> — id <span >{selectedDojo.id}</span>
+              Dojo: {selectedDojo.name}
             </p>
           )}
 
           <form className="form" onSubmit={onCreateContent}>
-            <div className="grid">
-              <label>
+            <div className="formGrid">
+              <label className="fieldLabel">
                 Título
-                <input value={contentForm.title} onChange={e => setContentForm({ ...contentForm, title: e.target.value })} required />
+                <input className="input" value={contentForm.title} onChange={e => setContentForm({ ...contentForm, title: e.target.value })} required />
               </label>
 
-              <label>
+              <label className="fieldLabel">
                 Tipo
-                <select value={contentForm.type} onChange={e => setContentForm({ ...contentForm, type: e.target.value as any })}>
+                <select className="input" value={contentForm.type} onChange={e => setContentForm({ ...contentForm, type: e.target.value as typeof contentForm.type })}>
                   <option value="TEXT">TEXT</option>
                   <option value="LINK">LINK</option>
                   <option value="PDF">PDF</option>
@@ -426,18 +459,18 @@ export default function AdminDashboard() {
                 </select>
               </label>
 
-              <label>
+              <label className="fieldLabel">
                 URL (opcional)
-                <input value={contentForm.url} onChange={e => setContentForm({ ...contentForm, url: e.target.value })} />
+                <input className="input" value={contentForm.url} onChange={e => setContentForm({ ...contentForm, url: e.target.value })} />
               </label>
 
-              <label>
+              <label className="fieldLabel" style={{ gridColumn: '1 / -1' }}>
                 Body (opcional)
-                <textarea value={contentForm.body} onChange={e => setContentForm({ ...contentForm, body: e.target.value })} rows={4} />
+                <textarea className="input" value={contentForm.body} onChange={e => setContentForm({ ...contentForm, body: e.target.value })} rows={4} />
               </label>
             </div>
 
-            <button className="btn" type="submit" disabled={contentLoading || !dojoId}>
+            <button className="button" type="submit" disabled={contentLoading || !dojoId} style={{ marginTop: 14 }}>
               {contentLoading ? 'Creando…' : 'Crear contenido'}
             </button>
           </form>
@@ -445,34 +478,34 @@ export default function AdminDashboard() {
       )}
 
       {tab === 'monitoring' && (
-        <section >
+        <section className="stack">
           <div className="card">
             <div className="row" style={{ justifyContent: 'space-between' }}>
               <h2>Health</h2>
-              <button className="btn" onClick={refreshMonitoring}>Refrescar</button>
+              <button className="button secondary" onClick={refreshMonitoring}>Refrescar</button>
             </div>
 
             {health ? (
-              <pre >{JSON.stringify(health, null, 2)}</pre>
+              <pre className="codeBlock">{JSON.stringify(health, null, 2)}</pre>
             ) : (
-              <p className="muted">—</p>
+              <p className="muted" style={{ marginTop: 12 }}>—</p>
             )}
           </div>
 
           <div className="card">
-            <h2>Stats</h2>
+            <h2>Estadísticas globales</h2>
             {stats ? (
-              <div className="grid">
-                <div className="stat"><b>Usuarios</b><div >{stats.users}</div></div>
-                <div className="stat"><b>Dojos</b><div >{stats.dojos}</div></div>
-                <div className="stat"><b>Contenido</b><div >{stats.contents}</div></div>
-                <div className="stat"><b>Membresías</b><div >{stats.memberships}</div></div>
-                <div className="stat"><b>StudentContent</b><div >{stats.studentContents}</div></div>
-                <div className="stat"><b>Completados</b><div >{stats.completedStudentContents}</div></div>
-                <div className="stat"><b>Asistencias</b><div >{stats.attendances}</div></div>
+              <div className="stat-grid" style={{ marginTop: 14 }}>
+                <StatCard label="Usuarios" value={stats.users} />
+                <StatCard label="Dojos" value={stats.dojos} />
+                <StatCard label="Contenido" value={stats.contents} />
+                <StatCard label="Membresías" value={stats.memberships} />
+                <StatCard label="StudentContent" value={stats.studentContents} />
+                <StatCard label="Completados" value={stats.completedStudentContents} accent="success" />
+                <StatCard label="Asistencias" value={stats.attendances} />
               </div>
             ) : (
-              <p className="muted">—</p>
+              <LoadingCard message="Cargando estadísticas…" />
             )}
           </div>
         </section>

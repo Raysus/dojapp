@@ -180,7 +180,8 @@ export class AdminService {
       gradeId?: string
     },
   ) {
-    const { dojoId, dojoRole, gradeId } = body
+    const { dojoId, dojoRole } = body
+    let { gradeId } = body
     if (!dojoId || !dojoRole) throw new BadRequestException('Faltan campos requeridos')
 
     const [user, dojo] = await Promise.all([
@@ -200,21 +201,36 @@ export class AdminService {
     })
 
     if (roleEnum === DojoRole.STUDENT) {
-      if (gradeId) {
-        const grade = await this.prisma.grade.findUnique({
-          where: { id: gradeId },
-          select: { id: true, styleId: true },
+      if (!gradeId) {
+        const defaultGrade = await this.prisma.grade.findFirst({
+          where: { styleId: dojo.styleId },
+          orderBy: { order: 'asc' },
         })
-        if (!grade || grade.styleId !== dojo.styleId) {
-          throw new BadRequestException('Grado no pertenece al dojo')
+        if (!defaultGrade) {
+          throw new BadRequestException('El dojo no tiene grados configurados')
         }
-
-        await this.prisma.studentGrade.upsert({
-          where: { userId_dojoId: { userId, dojoId } },
-          update: { gradeId },
-          create: { userId, dojoId, gradeId },
-        })
+        gradeId = defaultGrade.id
       }
+
+      const grade = await this.prisma.grade.findUnique({
+        where: { id: gradeId },
+        select: { id: true, styleId: true },
+      })
+      if (!grade || grade.styleId !== dojo.styleId) {
+        throw new BadRequestException('Grado no pertenece al dojo')
+      }
+
+      await this.prisma.studentGrade.upsert({
+        where: { userId_dojoId: { userId, dojoId } },
+        update: { gradeId },
+        create: { userId, dojoId, gradeId },
+      })
+
+      await this.prisma.userStyle.upsert({
+        where: { userId_styleId: { userId, styleId: dojo.styleId } },
+        update: { gradeId },
+        create: { userId, styleId: dojo.styleId, gradeId },
+      })
     } else {
       await this.prisma.studentGrade.deleteMany({
         where: { userId, dojoId },

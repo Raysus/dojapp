@@ -1,39 +1,40 @@
-import { NavLink, useLocation, useNavigate } from 'react-router-dom'
-import { useAuth } from '../auth/AuthContext'
-import { ThemeToggle } from './Theme'
+import { NavLink, useLocation, useNavigate } from 'react-router-dom';
+import { useAuth } from '../auth/AuthContext';
+import { ThemeToggle } from './Theme';
 
 function getDefaultRoute(role?: string) {
-  if (role === 'PROFESSOR') return '/professor'
-  if (role === 'STUDENT') return '/student'
-  if (role === 'ADMIN') return '/admin'
-  return '/'
+  if (role === 'PROFESSOR') return '/professor';
+  if (role === 'STUDENT') return '/student';
+  if (role === 'ADMIN') return '/admin';
+  return '/';
 }
 
 export default function Header() {
-  const { user, logout } = useAuth()
-  const navigate = useNavigate()
-  const location = useLocation()
+  const { user, logout } = useAuth();
+  const navigate = useNavigate();
+  const location = useLocation();
 
   const handleLogout = () => {
-    logout()
-    if (location.pathname !== '/') navigate('/')
-  }
+    logout();
+    if (location.pathname !== '/') navigate('/');
+  };
 
   return (
     <header className="appHeader">
       <div className="appHeader-inner">
         <div className="appHeader-left">
           <NavLink to="/" className="brand">
-            Dojapp
+            <span className="brandMark">🥋</span>
+            <span>Dojapp</span>
           </NavLink>
 
-          {user && (
-            <nav className="nav">
+          {user ? (
+            <nav className="nav" aria-label="Principal">
               <NavLink className="navLink" to={getDefaultRoute(user.role)}>
                 Dashboard
               </NavLink>
             </nav>
-          )}
+          ) : null}
         </div>
 
         <div className="appHeader-right">
@@ -44,17 +45,17 @@ export default function Header() {
               <span className="userBadge" title={user.email}>
                 {user.email}
               </span>
-              <button className="button secondary" onClick={handleLogout}>
+              <button className="button secondary" type="button" onClick={handleLogout}>
                 Salir
               </button>
             </>
           ) : (
-            <NavLink className="button secondary" to="/">
+            <NavLink className="button secondary" to="/login">
               Login
             </NavLink>
           )}
         </div>
       </div>
     </header>
-  )
+  );
 }

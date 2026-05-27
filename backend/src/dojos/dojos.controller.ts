@@ -30,6 +30,10 @@ export class DojosController {
         );
     }
 
+    /**
+     * List grades available for this dojo's style.
+     * Used by professor/instructor to assign a student's grade.
+     */
     @Get(':dojoId/grades')
     @UseGuards(JwtAuthGuard, DojoRoleGuard)
     @DojoRoles(DojoRole.PROFESSOR, DojoRole.INSTRUCTOR)

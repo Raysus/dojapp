@@ -35,10 +35,15 @@ export class AttendanceController {
     @Post()
     async markAttendance(
         @Param('dojoId') dojoId: string,
-        @Body() items: MarkAttendanceDto[],
+        @Body() body: MarkAttendanceDto[] | { records?: MarkAttendanceDto[] },
         @Req() req,
     ) {
         const takenById = req.user.sub
+        const items = Array.isArray(body) ? body : (body?.records ?? [])
+
+        if (!Array.isArray(items) || items.length === 0) {
+            return []
+        }
 
         return Promise.all(
             items.map((item) =>

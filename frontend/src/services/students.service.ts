@@ -34,6 +34,14 @@ export type StudentContentsByDojo = {
   contents: Content[]
 }
 
+export type StudentStatsByDojo = {
+  dojoId: string
+  dojoName: string
+  grade: string
+  progress: { completed: number; total: number; percentage: number }
+  attendance: { attendedClasses: number; totalClasses: number; percentage: number }
+}
+
 export const getMyInfo = async () => {
   const res = await api.get(`/students/me`)
   return res.data
@@ -49,6 +57,13 @@ export const completeMyContent = async (contentId: string) => {
   return res.data
 }
 
+export const getMyStats = async (): Promise<StudentStatsByDojo[]> => {
+  const res = await api.get<StudentStatsByDojo[]>(`/students/me/stats`)
+  return res.data
+}
+
+
+// Contenidos visibles para el estudiante (pero consultado por profesor/instructor)
 export type VisibleContentsResponse = {
   dojoId: string
   dojoName: string
@@ -67,10 +82,7 @@ export const getStudentVisibleContents = async (
   return res.data
 }
 
-export const getMyVisibleContents = async () => {
-  const res = await api.get('/students/me/contents')
-  return res.data
-}
+// NOTE: getMyVisibleContents era redundante con getMyContents. Usa getMyContents().
 
 export const assignStudentGrade = async (
   dojoId: string,

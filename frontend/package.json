@@ -6,10 +6,29 @@
   "scripts": {
     "dev": "vite",
     "build": "tsc -b && vite build",
+    "build:mobile": "npm run build && npx cap sync android",
+    "build:mobile:release": "npm run build && npx cap sync android",
+    "build:apk": "powershell -ExecutionPolicy Bypass -File scripts/build-apk.ps1",
+    "setup:phone": "powershell -ExecutionPolicy Bypass -File scripts/setup-phone.ps1",
+    "assets:generate": "npx capacitor-assets generate --iconBackgroundColor \"#0f172a\" --iconBackgroundColorDark \"#0f172a\" --splashBackgroundColor \"#0f172a\" --splashBackgroundColorDark \"#0f172a\"",
+    "android:keystore": "powershell -ExecutionPolicy Bypass -File android/generate-keystore.ps1",
+    "android:sdk": "powershell -ExecutionPolicy Bypass -File scripts/install-android-sdk.ps1",
+    "android:release": "npm run build:mobile:release && cd android && .\\gradlew.bat assembleRelease",
+    "open:android": "npx cap open android",
     "lint": "eslint .",
-    "preview": "vite preview"
+    "preview": "vite preview",
+    "test": "vitest run",
+    "test:watch": "vitest"
   },
   "dependencies": {
+    "@capacitor/android": "^8.3.4",
+    "@capacitor/browser": "^8.0.3",
+    "@capacitor/cli": "^8.3.4",
+    "@capacitor/core": "^8.3.4",
+    "@capacitor/network": "^8.0.1",
+    "@capacitor/preferences": "^8.0.1",
+    "@capacitor/splash-screen": "^8.0.1",
+    "@capacitor/status-bar": "^8.0.2",
     "axios": "^1.13.3",
     "jwt-decode": "^4.0.0",
     "react": "^19.2.0",
@@ -17,7 +36,11 @@
     "react-router-dom": "^7.13.0"
   },
   "devDependencies": {
+    "@capacitor/assets": "^3.0.5",
     "@eslint/js": "^9.39.1",
+    "@testing-library/jest-dom": "^6.9.1",
+    "@testing-library/react": "^16.3.2",
+    "@testing-library/user-event": "^14.6.1",
     "@types/node": "^24.10.1",
     "@types/react": "^19.2.5",
     "@types/react-dom": "^19.2.3",
@@ -26,8 +49,10 @@
     "eslint-plugin-react-hooks": "^7.0.1",
     "eslint-plugin-react-refresh": "^0.4.24",
     "globals": "^16.5.0",
+    "jsdom": "^29.1.1",
     "typescript": "~5.9.3",
     "typescript-eslint": "^8.46.4",
-    "vite": "^7.2.4"
+    "vite": "^7.2.4",
+    "vitest": "^4.1.7"
   }
 }

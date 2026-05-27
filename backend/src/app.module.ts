@@ -31,6 +31,7 @@ import { AdminModule } from './admin/admin.module'
     AdminModule,
   ],
   providers: [
+    // IMPORTANT: JwtAuthGuard must run BEFORE RolesGuard so req.user exists.
     { provide: APP_GUARD, useClass: JwtAuthGuard },
     { provide: APP_GUARD, useClass: RolesGuard },
   ],

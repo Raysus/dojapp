@@ -2,7 +2,7 @@ import { CanActivate, ExecutionContext, Injectable } from '@nestjs/common'
 import { Reflector } from '@nestjs/core'
 import { AuthorizationService } from '../authorization.service'
 import { DOJO_ROLES_KEY } from '../decorators/dojo-roles.decorator'
-import { DojoRole } from '@prisma/client'
+import { DojoRole, UserRole } from '@prisma/client'
 
 @Injectable()
 export class DojoRoleGuard implements CanActivate {
@@ -17,6 +17,11 @@ export class DojoRoleGuard implements CanActivate {
       []
 
     const request = context.switchToHttp().getRequest()
+
+    if (request.user?.role === UserRole.ADMIN) {
+      return true
+    }
+
     const userId = request.user?.sub
 
     const dojoId =

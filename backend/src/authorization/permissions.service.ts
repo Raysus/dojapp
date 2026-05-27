@@ -11,6 +11,10 @@ type MembershipArgs = {
 export class PermissionsService {
   constructor(private prisma: PrismaService) { }
 
+  /**
+   * Get dojo membership (optionally with select/include).
+   * Centralized here to keep membership access consistent and easy to extend.
+   */
   getMembership(userId: string, dojoId: string) {
     return this.prisma.dojoMembership.findUnique({
       where: { userId_dojoId: { userId, dojoId } },

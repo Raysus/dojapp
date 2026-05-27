@@ -1,8 +1,22 @@
+import { Link } from 'react-router-dom';
+import EmptyState from '../components/ui/EmptyState';
+
 export default function Unauthorized() {
-    return (
-        <div>
-            <h2>Acceso no autorizado</h2>
-            <p>No tienes permisos para ver esta página.</p>
-        </div>
-    );
+  return (
+    <div className="stack">
+      <EmptyState
+        icon="🔒"
+        title="Acceso no autorizado"
+        description="No tienes permisos para ver esta página. Inicia sesión con una cuenta adecuada o vuelve al inicio."
+      />
+      <div className="row" style={{ justifyContent: 'center' }}>
+        <Link className="button secondary" to="/login">
+          Ir al login
+        </Link>
+        <Link className="button ghost" to="/">
+          Inicio
+        </Link>
+      </div>
+    </div>
+  );
 }

@@ -16,6 +16,7 @@ export class CreateContentDto {
   @IsString()
   body?: string;
 
+  // The server sets this based on the Dojo's style.
   @IsOptional()
   @IsUUID()
   styleId?: string;

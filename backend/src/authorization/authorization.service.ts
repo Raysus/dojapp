@@ -2,6 +2,10 @@ import { Injectable } from '@nestjs/common'
 import { DojoRole } from '@prisma/client'
 import { PermissionsService } from './permissions.service'
 
+/**
+ * Backwards-compatible wrapper.
+ * Keep existing imports working while centralizing the logic in PermissionsService.
+ */
 @Injectable()
 export class AuthorizationService {
   constructor(private readonly perms: PermissionsService) { }

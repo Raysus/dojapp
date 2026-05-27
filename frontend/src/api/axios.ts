@@ -1,11 +1,13 @@
 import axios from 'axios';
+import { getApiBaseUrl } from '../platform/env';
+import { getCachedToken } from '../platform/token';
 
 export const api = axios.create({
-  baseURL: 'http://localhost:3000',
+  baseURL: getApiBaseUrl(),
 });
 
 api.interceptors.request.use(config => {
-  const token = localStorage.getItem('token');
+  const token = getCachedToken();
 
   if (token) {
     config.headers.Authorization = `Bearer ${token}`;

@@ -17,7 +17,7 @@ export class DojosService {
                 memberships: {
                     some: {
                         userId,
-                        role: 'PROFESSOR',
+                        role: { in: [DojoRole.PROFESSOR, DojoRole.INSTRUCTOR] },
                     },
                 },
             },
@@ -26,14 +26,14 @@ export class DojosService {
 
 
     async getStudentsByDojo(dojoId: string, userId: string) {
-        await this.authz.assertProfessorInDojo(userId, dojoId);
+        await this.authz.assertInstructorInDojo(userId, dojoId);
 
-        return this.prisma.dojoMembership.findMany({
+        const memberships = await this.prisma.dojoMembership.findMany({
             where: {
                 dojoId,
-                role: 'STUDENT',
+                role: DojoRole.STUDENT,
             },
-            include: {
+            select: {
                 user: {
                     select: {
                         id: true,
@@ -42,7 +42,11 @@ export class DojosService {
                     },
                 },
             },
+            orderBy: { user: { name: 'asc' } },
         });
+
+        // Devolver lista plana de alumnos (User)
+        return memberships.map(m => m.user);
     }
 
 

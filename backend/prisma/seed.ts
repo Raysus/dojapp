@@ -37,12 +37,14 @@ async function getOrCreateDojo(styleId: string) {
 }
 
 async function upsertUser(email: string, name: string, role: UserRole, hashedPassword: string) {
+  const isDemoAccount = email.endsWith('@dojo.cl')
+
   return prisma.user.upsert({
     where: { email },
     update: {
-      // Importante: si ya existe, NO pisamos password para no “romper” usuarios creados antes.
       name,
       role,
+      ...(isDemoAccount ? { password: hashedPassword } : {}),
     },
     create: {
       email,

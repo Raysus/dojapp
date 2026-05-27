@@ -6,11 +6,17 @@ import { DojoRoleGuard } from '../authorization/guards/dojo-role.guard';
 import { AssignGradeDto } from './dto/assign-grade.dto';
 import { StudentsService } from './students.service';
 
+/**
+ * Professor/Instructor actions over students inside a given dojo.
+ */
 @Controller('dojos/:dojoId/students')
 @UseGuards(JwtAuthGuard, DojoRoleGuard)
 export class DojoStudentsController {
-  constructor(private readonly studentsService: StudentsService) { }
+  constructor(private readonly studentsService: StudentsService) {}
 
+  /**
+   * Returns a student's detail (including content progress) for professor/instructor.
+   */
   @Get(':studentId')
   @DojoRoles(DojoRole.PROFESSOR, DojoRole.INSTRUCTOR)
   getStudentDetail(
@@ -21,6 +27,11 @@ export class DojoStudentsController {
     return this.studentsService.getByIdForProfessor(studentId, dojoId, req.user);
   }
 
+  
+  /**
+   * Returns the contents visible for this student in the dojo (global + up to grade).
+   * This does NOT depend on progress/unlocks.
+   */
   @Get(':studentId/contents')
   @DojoRoles(DojoRole.PROFESSOR, DojoRole.INSTRUCTOR)
   getStudentVisibleContents(
@@ -31,7 +42,7 @@ export class DojoStudentsController {
     return this.studentsService.getVisibleContentsForStudentInDojo(studentId, dojoId, req.user);
   }
 
-  @Post(':studentId/promote')
+@Post(':studentId/promote')
   @DojoRoles(DojoRole.PROFESSOR, DojoRole.INSTRUCTOR)
   promoteStudent(
     @Param('dojoId') dojoId: string,
@@ -55,6 +66,10 @@ export class DojoStudentsController {
     return this.studentsService.assignGradeToStudent(req.user.sub, dojoId, studentId, dto.gradeId);
   }
 
+  /**
+   * Toggles a content completion for a student.
+   * Body: { contentId: string }
+   */
   @Post(':studentId/contents/toggle')
   @DojoRoles(DojoRole.PROFESSOR, DojoRole.INSTRUCTOR)
   toggleStudentContent(
