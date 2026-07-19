@@ -13,6 +13,7 @@ type TokenUser = {
   sub: string
   email: string
   role: UserRole
+  name: string
 }
 
 const ACCESS_TTL_SEC = 60 * 60 * 2
@@ -73,6 +74,7 @@ export class AuthService {
         email: true,
         password: true,
         role: true,
+        name: true,
       },
     })
 
@@ -90,6 +92,7 @@ export class AuthService {
       sub: user.id,
       email: user.email,
       role: user.role,
+      name: user.name,
     })
   }
 
@@ -123,7 +126,7 @@ export class AuthService {
 
       const user = await this.prisma.user.findUnique({
         where: { id: payload.sub },
-        select: { id: true, email: true, role: true },
+        select: { id: true, email: true, role: true, name: true },
       })
 
       if (!user) {
@@ -134,12 +137,29 @@ export class AuthService {
         sub: user.id,
         email: user.email,
         role: user.role,
+        name: user.name,
       })
     } catch (err) {
       if (err instanceof UnauthorizedException) throw err
       this.logger.warn(`Refresh falló: ${(err as Error).message}`)
       throw new UnauthorizedException('Refresh token inválido o expirado')
     }
+  }
+
+  async issueTokensForUser(userId: string) {
+    const user = await this.prisma.user.findUnique({
+      where: { id: userId },
+      select: { id: true, email: true, role: true, name: true },
+    })
+    if (!user) {
+      throw new UnauthorizedException('Usuario no encontrado')
+    }
+    return this.tokensFor({
+      sub: user.id,
+      email: user.email,
+      role: user.role,
+      name: user.name,
+    })
   }
 
   async logout(refreshToken?: string, userId?: string) {

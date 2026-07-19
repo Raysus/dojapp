@@ -49,7 +49,7 @@ export default function Header() {
           {user ? (
             <>
               <span className="userBadge" title={user.email}>
-                {user.email}
+                {user.name || user.email}
               </span>
               <button className="button secondary" type="button" onClick={handleLogout}>
                 Salir

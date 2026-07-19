@@ -12,6 +12,7 @@ type JwtPayload = {
   sub: string
   email: string
   role: UserRole
+  name?: string
   type?: string
 }
 

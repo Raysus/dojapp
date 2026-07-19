@@ -15,6 +15,7 @@ interface UserPayload {
   sub: string;
   email: string;
   role: 'ADMIN' | 'PROFESSOR' | 'STUDENT';
+  name?: string;
   exp?: number;
   type?: string;
 }
