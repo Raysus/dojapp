@@ -95,3 +95,15 @@ export const assignStudentGrade = async (
   )
   return res.data
 }
+
+export type AddStudentInput = {
+  name: string
+  email: string
+  password?: string
+  gradeId: string
+}
+
+export const addStudentToDojo = async (dojoId: string, data: AddStudentInput) => {
+  const res = await api.post(`/dojos/${dojoId}/students`, data)
+  return res.data
+}

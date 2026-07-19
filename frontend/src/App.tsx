@@ -66,6 +66,19 @@ export default function App() {
         />
 
         <Route
+          path="/professor/dojos/:dojoId"
+          element={
+            <AuthGuard>
+              <RoleGuard role="PROFESSOR">
+                <LazyPage>
+                  <ProfessorDashboard />
+                </LazyPage>
+              </RoleGuard>
+            </AuthGuard>
+          }
+        />
+
+        <Route
           path="/professor/attendance"
           element={
             <AuthGuard>

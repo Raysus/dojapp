@@ -4,6 +4,7 @@ import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { DojoRoles } from '../authorization/decorators/dojo-roles.decorator';
 import { DojoRoleGuard } from '../authorization/guards/dojo-role.guard';
 import { AssignGradeDto } from './dto/assign-grade.dto';
+import { CreateStudentDto } from './dto/create-student.dto';
 import { StudentsService } from './students.service';
 
 /**
@@ -13,6 +14,19 @@ import { StudentsService } from './students.service';
 @UseGuards(JwtAuthGuard, DojoRoleGuard)
 export class DojoStudentsController {
   constructor(private readonly studentsService: StudentsService) {}
+
+  /**
+   * Create a new student or enroll an existing user as student in this dojo.
+   */
+  @Post()
+  @DojoRoles(DojoRole.PROFESSOR, DojoRole.INSTRUCTOR)
+  addStudent(
+    @Param('dojoId') dojoId: string,
+    @Body() dto: CreateStudentDto,
+    @Req() req,
+  ) {
+    return this.studentsService.addStudentToDojo(dojoId, req.user.sub, dto);
+  }
 
   /**
    * Returns a student's detail (including content progress) for professor/instructor.

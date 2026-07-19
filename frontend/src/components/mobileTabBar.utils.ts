@@ -25,7 +25,13 @@ export function getTabsForRole(role: string): TabItem[] {
 
   if (role === 'PROFESSOR') {
     return [
-      { to: '/professor', label: 'Dojos', icon: 'dojo' },
+      {
+        to: '/professor',
+        label: 'Dojos',
+        icon: 'dojo',
+        match: pathname =>
+          pathname === '/professor' || pathname.startsWith('/professor/dojos/'),
+      },
       {
         to: '/professor/attendance',
         label: 'Asistencia',

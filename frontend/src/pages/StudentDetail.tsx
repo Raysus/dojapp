@@ -10,12 +10,18 @@ import type { Student } from '../types/student';
 import StudentDetailSkeleton from '../components/StudentDetailSkeleton';
 import { getAttendanceMetrics } from '../services/professor.service';
 import { getDojoGrades } from '../services/dojos.service';
+import { professorDojoPath } from '../platform/routes';
 import PageHeader from '../components/ui/PageHeader';
 import StatCard from '../components/ui/StatCard';
 
 export default function StudentDetail() {
   const { dojoId, studentId } = useParams();
   const navigate = useNavigate();
+
+  const goBack = () => {
+    if (dojoId) navigate(professorDojoPath(dojoId));
+    else navigate('/professor');
+  };
 
   const [student, setStudent] = useState<Student | null>(null);
   const [visible, setVisible] = useState<VisibleContentsResponse | null>(null);
@@ -113,7 +119,7 @@ export default function StudentDetail() {
     return (
       <div className="stack">
         <div className="alert error">{loadError ?? 'Alumno no encontrado'}</div>
-        <button className="button secondary" type="button" onClick={() => navigate(-1)}>
+        <button className="button secondary" type="button" onClick={goBack}>
           ← Volver
         </button>
       </div>
@@ -128,7 +134,7 @@ export default function StudentDetail() {
         title={student.name}
         subtitle={visible ? `${visible.dojoName} · ${currentGradeLabel}` : 'Sin grado asignado en este dojo'}
         action={
-          <button className="button secondary" type="button" onClick={() => navigate(-1)}>
+          <button className="button secondary" type="button" onClick={goBack}>
             ← Volver
           </button>
         }

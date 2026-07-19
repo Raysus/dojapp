@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from 'react';
 import { Link, useParams } from 'react-router-dom';
 import { getAttendanceMetrics, getDojoProgressMetrics } from '../services/professor.service';
+import { professorDojoPath } from '../platform/routes';
 import PageHeader from '../components/ui/PageHeader';
 import StatCard from '../components/ui/StatCard';
 import LoadingCard from '../components/ui/LoadingCard';
@@ -65,7 +66,7 @@ export default function DojoStats() {
         <PageHeader
           title="Estadísticas del dojo"
           action={
-            <Link className="link" to="/professor">
+            <Link className="link" to={dojoId ? professorDojoPath(dojoId) : '/professor'}>
               ← Volver
             </Link>
           }
@@ -81,7 +82,7 @@ export default function DojoStats() {
         title="Estadísticas del dojo"
         subtitle="Progreso de contenidos y asistencia por alumno."
         action={
-          <Link className="link" to="/professor">
+          <Link className="link" to={dojoId ? professorDojoPath(dojoId) : '/professor'}>
             ← Volver
           </Link>
         }

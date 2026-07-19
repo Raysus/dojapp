@@ -7,6 +7,7 @@ import {
   loadAttendanceDraft,
   saveAttendanceDraft,
 } from '../platform/attendanceDraft';
+import { professorDojoPath } from '../platform/routes';
 import PageHeader from '../components/ui/PageHeader';
 import StatCard from '../components/ui/StatCard';
 import LoadingCard from '../components/ui/LoadingCard';
@@ -175,7 +176,7 @@ export default function DojoAttendance() {
         title="Asistencia"
         subtitle="Marca presente o ausente. Si no hay red, se guarda un borrador local."
         action={
-          <Link className="link" to="/professor">
+          <Link className="link" to={dojoId ? professorDojoPath(dojoId) : '/professor'}>
             ← Volver
           </Link>
         }

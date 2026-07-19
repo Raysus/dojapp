@@ -659,4 +659,90 @@ export class StudentsService {
     });
   }
 
+  /**
+   * Professor/instructor creates a new student or enrolls an existing one in this dojo.
+   */
+  async addStudentToDojo(
+    dojoId: string,
+    actorUserId: string,
+    dto: CreateStudentDto,
+  ) {
+    await this.authz.assertDojoRole(actorUserId, dojoId, [
+      DojoRole.PROFESSOR,
+      DojoRole.INSTRUCTOR,
+    ]);
+
+    const email = dto.email.trim().toLowerCase();
+    const name = dto.name.trim();
+    if (!name) throw new BadRequestException('El nombre es obligatorio');
+
+    const dojo = await this.prisma.dojo.findUnique({
+      where: { id: dojoId },
+      select: { id: true, styleId: true },
+    });
+    if (!dojo) throw new NotFoundException('Dojo no existe');
+
+    const grade = await this.prisma.grade.findUnique({
+      where: { id: dto.gradeId },
+      select: { id: true, styleId: true },
+    });
+    if (!grade || grade.styleId !== dojo.styleId) {
+      throw new BadRequestException('Grado no pertenece al dojo');
+    }
+
+    let user = await this.prisma.user.findUnique({
+      where: { email },
+      select: { id: true, email: true, name: true, role: true },
+    });
+
+    if (!user) {
+      if (!dto.password || dto.password.length < 6) {
+        throw new BadRequestException(
+          'La contraseña es obligatoria (mín. 6 caracteres) para alumnos nuevos',
+        );
+      }
+      const passwordHash = await bcrypt.hash(dto.password, 10);
+      user = await this.prisma.user.create({
+        data: {
+          email,
+          name,
+          password: passwordHash,
+          role: UserRole.STUDENT,
+        },
+        select: { id: true, email: true, name: true, role: true },
+      });
+    } else {
+      if (user.role === UserRole.ADMIN) {
+        throw new BadRequestException('No se puede agregar un administrador como alumno');
+      }
+      if (user.name !== name) {
+        user = await this.prisma.user.update({
+          where: { id: user.id },
+          data: { name },
+          select: { id: true, email: true, name: true, role: true },
+        });
+      }
+    }
+
+    await this.prisma.dojoMembership.upsert({
+      where: { userId_dojoId: { userId: user.id, dojoId } },
+      update: { role: DojoRole.STUDENT },
+      create: { userId: user.id, dojoId, role: DojoRole.STUDENT },
+    });
+
+    await this.prisma.studentGrade.upsert({
+      where: { userId_dojoId: { userId: user.id, dojoId } },
+      update: { gradeId: dto.gradeId },
+      create: { userId: user.id, dojoId, gradeId: dto.gradeId },
+    });
+
+    await this.prisma.userStyle.upsert({
+      where: { userId_styleId: { userId: user.id, styleId: dojo.styleId } },
+      update: { gradeId: dto.gradeId },
+      create: { userId: user.id, styleId: dojo.styleId, gradeId: dto.gradeId },
+    });
+
+    return user;
+  }
+
 }

@@ -22,9 +22,11 @@ async function bootstrap() {
 
   const defaultOrigins = [
     'http://localhost:5173',
+    'http://127.0.0.1:5173',
     'https://localhost',
     'capacitor://localhost',
     'http://localhost',
+    'http://127.0.0.1',
   ]
 
   const allowedOrigins = (process.env.CORS_ORIGIN ?? defaultOrigins.join(','))
@@ -32,8 +34,29 @@ async function bootstrap() {
     .map((s) => s.trim())
     .filter(Boolean)
 
+  const isDev = process.env.NODE_ENV !== 'production'
+
   app.enableCors({
-    origin: allowedOrigins,
+    origin: (origin, callback) => {
+      // Same-origin / curl / native Capacitor may omit Origin
+      if (!origin) {
+        callback(null, true)
+        return
+      }
+      if (allowedOrigins.includes(origin)) {
+        callback(null, true)
+        return
+      }
+      // Local Vite (any port) during development
+      if (
+        isDev &&
+        /^https?:\/\/(localhost|127\.0\.0\.1)(:\d+)?$/.test(origin)
+      ) {
+        callback(null, true)
+        return
+      }
+      callback(new Error(`CORS blocked for origin: ${origin}`), false)
+    },
     credentials: true,
   })
 

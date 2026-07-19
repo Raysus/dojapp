@@ -6,6 +6,7 @@ const TITLES: Array<{ match: RegExp | string; title: string }> = [
   { match: '/login', title: 'Iniciar sesión' },
   { match: '/admin', title: 'Administración' },
   { match: '/professor/attendance', title: 'Asistencia' },
+  { match: /^\/professor\/dojos\//, title: 'Dojo' },
   { match: '/professor', title: 'Panel del profesor' },
   { match: '/student', title: 'Panel del alumno' },
   { match: '/account', title: 'Cuenta' },

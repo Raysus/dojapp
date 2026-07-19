@@ -1,18 +1,16 @@
-import { IsEmail, IsString, MinLength } from 'class-validator';
+import { IsEmail, IsOptional, IsString, IsUUID, MinLength } from 'class-validator';
 
 export class CreateStudentDto {
-    @IsEmail()
-    email: string;
+  @IsEmail()
+  email: string;
 
-    @MinLength(6)
-    password: string;
+  @IsOptional()
+  @MinLength(6)
+  password?: string;
 
-    @IsString()
-    name: string;
+  @IsString()
+  name: string;
 
-    @IsString()
-    dojoId: string;
-
-    @IsString()
-    gradeId: string;
+  @IsUUID()
+  gradeId: string;
 }

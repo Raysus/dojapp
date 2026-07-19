@@ -11,4 +11,17 @@ export const getDojoGrades = async (dojoId: string) => {
 };
 
 export const getDojoContents = async (dojoId: string) =>
-  (await api.get(`/dojos/${dojoId}/contents`)).data
+  (await api.get(`/dojos/${dojoId}/contents`)).data;
+
+export type CreateDojoContentInput = {
+  title: string;
+  type: 'PDF' | 'VIDEO' | 'TEXT' | 'LINK';
+  url?: string;
+  body?: string;
+  gradeId?: string;
+};
+
+export const createDojoContent = async (dojoId: string, data: CreateDojoContentInput) => {
+  const res = await api.post(`/dojos/${dojoId}/contents`, data);
+  return res.data;
+};

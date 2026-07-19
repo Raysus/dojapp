@@ -19,6 +19,12 @@ describe('mobileTabBar.utils', () => {
     expect(shouldHideTabBar('/student')).toBe(false);
   });
 
+  it('marks dojos tab active for selected dojo route', () => {
+    const dojosTab = getTabsForRole('PROFESSOR')[0];
+    expect(dojosTab.match?.('/professor/dojos/abc')).toBe(true);
+    expect(dojosTab.match?.('/professor')).toBe(true);
+  });
+
   it('marks attendance route active for nested dojo attendance', () => {
     const attendanceTab = getTabsForRole('PROFESSOR')[1];
     expect(attendanceTab.match?.('/dojos/abc/attendance')).toBe(true);

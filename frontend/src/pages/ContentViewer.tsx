@@ -4,6 +4,7 @@ import { api } from '../api/axios'
 import { useAuth } from '../auth/AuthContext'
 import { getNetworkErrorMessage } from '../hooks/useNetworkStatus'
 import { isNativeApp } from '../platform/native'
+import { professorDojoPath } from '../platform/routes'
 import { completeMyContent } from '../services/students.service'
 import PageHeader from '../components/ui/PageHeader'
 import LoadingCard from '../components/ui/LoadingCard'
@@ -38,6 +39,18 @@ export default function ContentViewer() {
   const [completing, setCompleting] = useState(false)
   const [completeMsg, setCompleteMsg] = useState<string | null>(null)
   const native = isNativeApp()
+
+  const goBack = () => {
+    if (user?.role === 'PROFESSOR' && dojoId) {
+      navigate(professorDojoPath(dojoId))
+      return
+    }
+    if (user?.role === 'STUDENT') {
+      navigate('/student')
+      return
+    }
+    navigate(-1)
+  }
 
   useEffect(() => {
     let mounted = true
@@ -110,7 +123,7 @@ export default function ContentViewer() {
           <h3 style={{ marginTop: 0 }}>No se pudo abrir el contenido</h3>
           <p className="muted">{err}</p>
         </div>
-        <button className="button secondary" onClick={() => navigate(-1)}>
+        <button className="button secondary" onClick={goBack}>
           ← Volver
         </button>
       </div>
@@ -261,7 +274,7 @@ export default function ContentViewer() {
 
       <button
         className="button secondary"
-        onClick={() => navigate(-1)}
+        onClick={goBack}
         style={{ width: 'fit-content' }}
       >
         ← Volver
