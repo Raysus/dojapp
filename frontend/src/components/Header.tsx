@@ -1,6 +1,7 @@
 import { NavLink, useLocation, useNavigate } from 'react-router-dom';
 import { useAuth } from '../auth/AuthContext';
 import { ThemeToggle } from './Theme';
+import { IconBrand } from './icons';
 
 function getDefaultRoute(role?: string) {
   if (role === 'PROFESSOR') return '/professor';
@@ -24,14 +25,19 @@ export default function Header() {
       <div className="appHeader-inner">
         <div className="appHeader-left">
           <NavLink to="/" className="brand">
-            <span className="brandMark">🥋</span>
-            <span>Dojapp</span>
+            <span className="brandMark" aria-hidden="true">
+              <IconBrand />
+            </span>
+            <span className="brandName">Dojapp</span>
           </NavLink>
 
           {user ? (
             <nav className="nav" aria-label="Principal">
               <NavLink className="navLink" to={getDefaultRoute(user.role)}>
-                Dashboard
+                Inicio
+              </NavLink>
+              <NavLink className="navLink" to="/account">
+                Cuenta
               </NavLink>
             </nav>
           ) : null}
@@ -51,7 +57,7 @@ export default function Header() {
             </>
           ) : (
             <NavLink className="button secondary" to="/login">
-              Login
+              Entrar
             </NavLink>
           )}
         </div>

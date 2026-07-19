@@ -1,11 +1,12 @@
 import { Link } from 'react-router-dom';
 import EmptyState from '../components/ui/EmptyState';
+import { IconSettings } from '../components/icons';
 
 export default function Unauthorized() {
   return (
     <div className="stack">
       <EmptyState
-        icon="🔒"
+        icon={<IconSettings />}
         title="Acceso no autorizado"
         description="No tienes permisos para ver esta página. Inicia sesión con una cuenta adecuada o vuelve al inicio."
       />

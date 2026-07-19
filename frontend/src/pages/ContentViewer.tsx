@@ -9,6 +9,7 @@ import PageHeader from '../components/ui/PageHeader'
 import LoadingCard from '../components/ui/LoadingCard'
 import {
   isDirectVideoUrl,
+  isSafeHttpUrl,
   isYouTubeUrl,
   openExternalUrl,
   toYouTubeEmbed,
@@ -62,10 +63,13 @@ export default function ContentViewer() {
   }, [dojoId, contentId])
 
   const embedUrl = useMemo(() => {
-    if (!content?.url) return null
+    if (!content?.url || !isSafeHttpUrl(content.url)) return null
     if (content.type === 'VIDEO') return toYouTubeEmbed(content.url) ?? content.url
     return content.url
   }, [content])
+
+  const safeContentUrl =
+    content?.url && isSafeHttpUrl(content.url) ? content.url : null
 
   const handleOpenExternal = async (url: string) => {
     try {
@@ -83,7 +87,13 @@ export default function ContentViewer() {
       setCompleteMsg(null)
       await completeMyContent(contentId)
       setCompleted(true)
-      setCompleteMsg('Contenido marcado como completado.')
+      setCompleteMsg('Contenido marcado como completado. ¡Sigue así!')
+      // Signal dashboards to refresh unlock animation on next visit
+      try {
+        sessionStorage.setItem('dojapp:content-completed', contentId)
+      } catch {
+        /* ignore */
+      }
     } catch (e) {
       setCompleteMsg(getNetworkErrorMessage(e) ?? 'No se pudo marcar como completado.')
     } finally {
@@ -109,7 +119,7 @@ export default function ContentViewer() {
 
   if (!content) return null
 
-  const videoUrl = content.url ?? ''
+  const videoUrl = safeContentUrl ?? ''
   const showNativeVideoPlayer =
     content.type === 'VIDEO' && videoUrl && isDirectVideoUrl(videoUrl) && !isYouTubeUrl(videoUrl)
   const showNativeExternalVideo =
@@ -134,24 +144,24 @@ export default function ContentViewer() {
 
         {content.type === 'LINK' && (
           <div style={{ marginTop: 12 }}>
-            {content.url ? (
+            {safeContentUrl ? (
               <button
                 className="button"
                 type="button"
                 disabled={opening}
-                onClick={() => void handleOpenExternal(content.url!)}
+                onClick={() => void handleOpenExternal(safeContentUrl)}
               >
-                {opening ? 'Abriendo…' : native ? 'Abrir enlace' : 'Abrir link'}
+                {opening ? 'Abriendo…' : 'Abrir enlace'}
               </button>
             ) : (
-              <p className="muted">Sin URL.</p>
+              <p className="muted">{content.url ? 'URL no permitida (solo http/https).' : 'Sin URL.'}</p>
             )}
           </div>
         )}
 
         {content.type === 'PDF' && (
           <div style={{ marginTop: 12 }}>
-            {content.url ? (
+            {safeContentUrl ? (
               native ? (
                 <div className="stack">
                   <p className="muted">
@@ -161,7 +171,7 @@ export default function ContentViewer() {
                     className="button"
                     type="button"
                     disabled={opening}
-                    onClick={() => void handleOpenExternal(content.url!)}
+                    onClick={() => void handleOpenExternal(safeContentUrl)}
                   >
                     {opening ? 'Abriendo…' : 'Abrir PDF'}
                   </button>
@@ -169,17 +179,16 @@ export default function ContentViewer() {
               ) : (
                 <iframe
                   title="pdf"
-                  src={content.url}
-                  style={{
-                    width: '100%',
-                    height: 700,
-                    border: '1px solid var(--border)',
-                    borderRadius: 12,
-                  }}
+                  src={safeContentUrl}
+                  sandbox="allow-scripts allow-same-origin allow-popups allow-downloads"
+                  referrerPolicy="no-referrer"
+                  className="content-embed"
                 />
               )
             ) : (
-              <p className="muted">Este PDF no tiene URL asociada.</p>
+              <p className="muted">
+                {content.url ? 'URL no permitida (solo http/https).' : 'Este PDF no tiene URL asociada.'}
+              </p>
             )}
           </div>
         )}
@@ -187,7 +196,9 @@ export default function ContentViewer() {
         {content.type === 'VIDEO' && (
           <div style={{ marginTop: 12 }}>
             {!videoUrl ? (
-              <p className="muted">Este video no tiene URL asociada.</p>
+              <p className="muted">
+                {content.url ? 'URL no permitida (solo http/https).' : 'Este video no tiene URL asociada.'}
+              </p>
             ) : showNativeExternalVideo ? (
               <div className="stack">
                 <p className="muted">Abre el video en YouTube con un toque.</p>
@@ -212,12 +223,9 @@ export default function ContentViewer() {
               <iframe
                 title="video"
                 src={embedUrl!}
-                style={{
-                  width: '100%',
-                  height: 500,
-                  border: '1px solid var(--border)',
-                  borderRadius: 12,
-                }}
+                sandbox="allow-scripts allow-same-origin allow-presentation allow-popups"
+                referrerPolicy="no-referrer"
+                className="content-embed content-embed--video"
                 allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
                 allowFullScreen
               />
@@ -240,12 +248,12 @@ export default function ContentViewer() {
       {user?.role === 'STUDENT' && contentId && (
         <div className="card stack">
           <button
-            className="button"
+            className={`button${completed ? ' content-complete-done' : ''}`}
             type="button"
             disabled={completing || completed}
             onClick={() => void handleComplete()}
           >
-            {completed ? 'Completado ✓' : completing ? 'Guardando…' : 'Marcar como completado'}
+            {completed ? 'Completado' : completing ? 'Guardando…' : 'Marcar como completado'}
           </button>
           {completeMsg ? <p className="muted">{completeMsg}</p> : null}
         </div>

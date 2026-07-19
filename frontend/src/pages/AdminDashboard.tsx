@@ -23,6 +23,7 @@ export default function AdminDashboard() {
   const [tab, setTab] = useState<Tab>('users');
 
   const [error, setError] = useState<string | null>(null);
+  const [success, setSuccess] = useState<string | null>(null);
 
   // monitoring
   const [health, setHealth] = useState<{ ok: boolean; timestamp: string; uptimeSeconds: number } | null>(null);
@@ -31,6 +32,7 @@ export default function AdminDashboard() {
   // users
   const [users, setUsers] = useState<AdminUser[]>([]);
   const [usersLoading, setUsersLoading] = useState(false);
+  const [usersLoaded, setUsersLoaded] = useState(false);
   const [userForm, setUserForm] = useState({
     name: '',
     email: '',
@@ -50,6 +52,7 @@ export default function AdminDashboard() {
 
   // content
   const [dojos, setDojos] = useState<AdminDojo[]>([]);
+  const [dojosLoaded, setDojosLoaded] = useState(false);
   const [grades, setGrades] = useState<AdminGrade[]>([]);
   const [dojoId, setDojoId] = useState('');
   const [contentForm, setContentForm] = useState({
@@ -60,9 +63,18 @@ export default function AdminDashboard() {
     gradeId: '',
   });
   const [contentLoading, setContentLoading] = useState(false);
+  const [monitoringLoaded, setMonitoringLoaded] = useState(false);
 
   const selectedDojo = useMemo(() => dojos.find(d => d.id === dojoId) ?? null, [dojos, dojoId]);
   const selectedAssignDojo = useMemo(() => dojos.find(d => d.id === assignForm.dojoId) ?? null, [dojos, assignForm.dojoId]);
+
+  const roleLabel = (role: string) => {
+    if (role === 'STUDENT') return 'Alumno';
+    if (role === 'PROFESSOR') return 'Profesor';
+    if (role === 'ADMIN') return 'Admin';
+    if (role === 'INSTRUCTOR') return 'Instructor';
+    return role;
+  };
 
   async function refreshUsers() {
     setError(null);
@@ -70,6 +82,7 @@ export default function AdminDashboard() {
     try {
       const data = await listUsers();
       setUsers(data);
+      setUsersLoaded(true);
       if (!assignForm.userId && data.length) {
         setAssignForm(prev => ({ ...prev, userId: data[0].id }));
       }
@@ -86,6 +99,7 @@ export default function AdminDashboard() {
       const [h, s] = await Promise.all([getHealth(), getStats()]);
       setHealth(h);
       setStats(s);
+      setMonitoringLoaded(true);
     } catch (e: any) {
       setError(e?.response?.data?.message ?? 'No se pudo cargar monitoreo');
     }
@@ -96,6 +110,7 @@ export default function AdminDashboard() {
     try {
       const data = await listDojos();
       setDojos(data);
+      setDojosLoaded(true);
 
       if (!dojoId && data.length) setDojoId(data[0].id);
       if (!assignForm.dojoId && data.length) setAssignForm(prev => ({ ...prev, dojoId: data[0].id }));
@@ -133,27 +148,39 @@ export default function AdminDashboard() {
   }
 
   useEffect(() => {
-    refreshUsers();
-    refreshMonitoring();
-    loadDojos();
+    setSuccess(null);
+    setError(null);
+    if (tab === 'users') {
+      if (!usersLoaded) void refreshUsers();
+      if (!dojosLoaded) void loadDojos();
+    }
+    if (tab === 'content') {
+      if (!dojosLoaded) void loadDojos();
+    }
+    if (tab === 'monitoring') {
+      if (!monitoringLoaded) void refreshMonitoring();
+    }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+  }, [tab]);
 
   useEffect(() => {
+    if (tab !== 'content') return;
     loadGrades(dojoId);
     setContentForm(prev => ({ ...prev, gradeId: '' }));
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [dojoId]);
+  }, [dojoId, tab]);
 
   useEffect(() => {
+    if (tab !== 'users') return;
     loadAssignGrades(assignForm.dojoId);
     setAssignForm(prev => ({ ...prev, gradeId: '' }));
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [assignForm.dojoId]);
+  }, [assignForm.dojoId, tab]);
 
   async function onCreateUser(e: React.FormEvent) {
     e.preventDefault();
     setError(null);
+    setSuccess(null);
     try {
       await createUser({
         name: userForm.name.trim(),
@@ -163,8 +190,8 @@ export default function AdminDashboard() {
       });
 
       setUserForm({ name: '', email: '', password: '', role: 'STUDENT' });
+      setSuccess('Usuario creado correctamente.');
       await refreshUsers();
-      await refreshMonitoring();
     } catch (e2: any) {
       setError(e2?.response?.data?.message ?? 'No se pudo crear usuario');
     }
@@ -174,7 +201,14 @@ export default function AdminDashboard() {
     e.preventDefault();
     if (!assignForm.userId || !assignForm.dojoId) return;
 
+    if (assignForm.dojoRole === 'STUDENT' && !assignForm.gradeId) {
+      setError('El grado es obligatorio para alumnos.');
+      setSuccess(null);
+      return;
+    }
+
     setError(null);
+    setSuccess(null);
     setAssignLoading(true);
     try {
       await assignUserToDojo(assignForm.userId, {
@@ -183,8 +217,8 @@ export default function AdminDashboard() {
         gradeId: assignForm.gradeId || undefined,
       });
 
+      setSuccess('Usuario asignado al dojo.');
       await refreshUsers();
-      await refreshMonitoring();
     } catch (e2: any) {
       setError(e2?.response?.data?.message ?? 'No se pudo asignar usuario al dojo');
     } finally {
@@ -196,7 +230,17 @@ export default function AdminDashboard() {
     e.preventDefault();
     if (!dojoId) return;
 
+    if (
+      (contentForm.type === 'LINK' || contentForm.type === 'PDF' || contentForm.type === 'VIDEO') &&
+      !contentForm.url.trim()
+    ) {
+      setError(`La URL es obligatoria para contenidos de tipo ${contentForm.type}.`);
+      setSuccess(null);
+      return;
+    }
+
     setError(null);
+    setSuccess(null);
     setContentLoading(true);
     try {
       await createContent(dojoId, {
@@ -208,7 +252,7 @@ export default function AdminDashboard() {
       });
 
       setContentForm({ title: '', type: 'TEXT', url: '', body: '', gradeId: '' });
-      await refreshMonitoring();
+      setSuccess('Contenido creado correctamente.');
     } catch (e2: any) {
       setError(e2?.response?.data?.message ?? 'No se pudo crear contenido');
     } finally {
@@ -249,8 +293,14 @@ export default function AdminDashboard() {
       />
 
       {error && (
-        <div className="alert error">
+        <div className="alert error" role="alert">
           <b>Error:</b> {error}
+        </div>
+      )}
+
+      {success && (
+        <div className="alert success" role="status">
+          {success}
         </div>
       )}
 
@@ -271,23 +321,23 @@ export default function AdminDashboard() {
                 </label>
 
                 <label className="fieldLabel">
-                  Password
-                  <input className="input" type="password" value={userForm.password} onChange={e => setUserForm({ ...userForm, password: e.target.value })} required />
+                  Contraseña
+                  <input className="input" type="password" value={userForm.password} onChange={e => setUserForm({ ...userForm, password: e.target.value })} required minLength={6} />
                 </label>
 
                 <label className="fieldLabel">
                   Rol
                   <select className="input" value={userForm.role} onChange={e => setUserForm({ ...userForm, role: e.target.value as typeof userForm.role })}>
-                    <option value="STUDENT">STUDENT</option>
-                    <option value="PROFESSOR">PROFESSOR</option>
-                    <option value="ADMIN">ADMIN</option>
+                    <option value="STUDENT">Alumno</option>
+                    <option value="PROFESSOR">Profesor</option>
+                    <option value="ADMIN">Admin</option>
                   </select>
                 </label>
               </div>
 
               <div className="row" style={{ marginTop: 14 }}>
                 <button className="button" type="submit">Crear</button>
-                <button className="button secondary" type="button" onClick={refreshUsers} disabled={usersLoading}>
+                <button className="button secondary" type="button" onClick={() => void refreshUsers()} disabled={usersLoading}>
                   {usersLoading ? 'Actualizando…' : 'Refrescar usuarios'}
                 </button>
               </div>
@@ -305,7 +355,7 @@ export default function AdminDashboard() {
                   <select className="input" value={assignForm.userId} onChange={e => setAssignForm({ ...assignForm, userId: e.target.value })}>
                     {users.map(u => (
                       <option key={u.id} value={u.id}>
-                        {u.name} — {u.email} ({u.role})
+                        {u.name} — {u.email} ({roleLabel(u.role)})
                       </option>
                     ))}
                   </select>
@@ -325,21 +375,22 @@ export default function AdminDashboard() {
                 <label className="fieldLabel">
                   Rol en dojo
                   <select className="input" value={assignForm.dojoRole} onChange={e => setAssignForm({ ...assignForm, dojoRole: e.target.value as typeof assignForm.dojoRole })}>
-                    <option value="STUDENT">STUDENT</option>
-                    <option value="INSTRUCTOR">INSTRUCTOR</option>
-                    <option value="PROFESSOR">PROFESSOR</option>
+                    <option value="STUDENT">Alumno</option>
+                    <option value="INSTRUCTOR">Instructor</option>
+                    <option value="PROFESSOR">Profesor</option>
                   </select>
                 </label>
 
                 <label className="fieldLabel">
-                  Grado (solo si STUDENT)
+                  Grado {assignForm.dojoRole === 'STUDENT' ? '(obligatorio)' : '(solo alumnos)'}
                   <select
                     className="input"
                     value={assignForm.gradeId}
                     onChange={e => setAssignForm({ ...assignForm, gradeId: e.target.value })}
                     disabled={assignForm.dojoRole !== 'STUDENT'}
+                    required={assignForm.dojoRole === 'STUDENT'}
                   >
-                    <option value="">(sin grado)</option>
+                    <option value="">{assignForm.dojoRole === 'STUDENT' ? 'Selecciona un grado' : '(sin grado)'}</option>
                     {assignGrades.map(g => (
                       <option key={g.id} value={g.id}>
                         {g.order}. {g.name}
@@ -363,16 +414,19 @@ export default function AdminDashboard() {
           <div className="card">
             <div className="row" style={{ justifyContent: 'space-between' }}>
               <h2>Usuarios</h2>
-              <button className="button secondary" onClick={refreshUsers} disabled={usersLoading}>
+              <button className="button secondary" onClick={() => void refreshUsers()} disabled={usersLoading}>
                 {usersLoading ? 'Actualizando…' : 'Refrescar'}
               </button>
             </div>
 
             {usersLoading && users.length === 0 ? (
               <LoadingCard message="Cargando usuarios…" />
+            ) : users.length === 0 ? (
+              <p className="muted" style={{ marginTop: 12 }}>No hay usuarios todavía.</p>
             ) : (
               <div className="tableWrap">
                 <table className="dataTable">
+                  <caption className="srOnly">Listado de usuarios del sistema</caption>
                   <thead>
                     <tr>
                       <th>Nombre</th>
@@ -385,18 +439,18 @@ export default function AdminDashboard() {
                   <tbody>
                     {users.map(u => (
                       <tr key={u.id}>
-                        <td>{u.name}</td>
-                        <td>{u.email}</td>
-                        <td><span className="pill">{u.role}</span></td>
-                        <td>
+                        <td data-label="Nombre">{u.name}</td>
+                        <td data-label="Email">{u.email}</td>
+                        <td data-label="Rol"><span className="pill">{roleLabel(u.role)}</span></td>
+                        <td data-label="Dojos">
                           {(u.dojoMemberships ?? []).length === 0 && <span className="muted">—</span>}
                           {(u.dojoMemberships ?? []).map(m => (
                             <div key={m.dojoId} className="muted">
-                              {m.dojo?.name ?? m.dojoId} — {m.role}
+                              {m.dojo?.name ?? m.dojoId} — {roleLabel(m.role)}
                             </div>
                           ))}
                         </td>
-                        <td className="muted">{new Date(u.createdAt).toLocaleString()}</td>
+                        <td data-label="Creado" className="muted">{new Date(u.createdAt).toLocaleString()}</td>
                       </tr>
                     ))}
                   </tbody>
@@ -405,7 +459,7 @@ export default function AdminDashboard() {
             )}
 
             <p className="muted" style={{ marginTop: 12 }}>
-              Tip: si asignas un usuario como STUDENT y seleccionas un grado, se guarda su grado inicial para ese dojo.
+              Tip: si asignas un alumno y seleccionas un grado, se guarda su grado inicial para ese dojo.
             </p>
           </div>
         </section>
@@ -452,20 +506,20 @@ export default function AdminDashboard() {
               <label className="fieldLabel">
                 Tipo
                 <select className="input" value={contentForm.type} onChange={e => setContentForm({ ...contentForm, type: e.target.value as typeof contentForm.type })}>
-                  <option value="TEXT">TEXT</option>
-                  <option value="LINK">LINK</option>
+                  <option value="TEXT">Texto</option>
+                  <option value="LINK">Enlace</option>
                   <option value="PDF">PDF</option>
-                  <option value="VIDEO">VIDEO</option>
+                  <option value="VIDEO">Video</option>
                 </select>
               </label>
 
               <label className="fieldLabel">
-                URL (opcional)
+                URL {contentForm.type === 'TEXT' ? '(opcional)' : '(obligatoria)'}
                 <input className="input" value={contentForm.url} onChange={e => setContentForm({ ...contentForm, url: e.target.value })} />
               </label>
 
               <label className="fieldLabel" style={{ gridColumn: '1 / -1' }}>
-                Body (opcional)
+                Texto (opcional)
                 <textarea className="input" value={contentForm.body} onChange={e => setContentForm({ ...contentForm, body: e.target.value })} rows={4} />
               </label>
             </div>
@@ -500,7 +554,7 @@ export default function AdminDashboard() {
                 <StatCard label="Dojos" value={stats.dojos} />
                 <StatCard label="Contenido" value={stats.contents} />
                 <StatCard label="Membresías" value={stats.memberships} />
-                <StatCard label="StudentContent" value={stats.studentContents} />
+                <StatCard label="Progreso alumno" value={stats.studentContents} />
                 <StatCard label="Completados" value={stats.completedStudentContents} accent="success" />
                 <StatCard label="Asistencias" value={stats.attendances} />
               </div>

@@ -5,6 +5,20 @@
     var(--bg);
 }
 
+.appShell--web .appMain {
+  padding-bottom: 40px;
+}
+
+@media (max-width: 768px) {
+  .appShell--web .appMain {
+    padding-bottom: calc(24px + var(--mobile-tab-height, 64px) + env(safe-area-inset-bottom, 0px));
+  }
+
+  .appShell--web .userBadge {
+    display: none;
+  }
+}
+
 .appMain {
   max-width: 1120px;
   margin: 0 auto;
@@ -43,10 +57,15 @@
   display: inline-flex;
   align-items: center;
   gap: 10px;
+  font-family: var(--font-display);
   font-weight: 800;
   letter-spacing: -0.03em;
   color: var(--text);
   text-decoration: none;
+}
+
+.brandName {
+  font-size: 1.15rem;
 }
 
 .brandMark {
@@ -55,10 +74,9 @@
   border-radius: 10px;
   display: grid;
   place-items: center;
-  background: linear-gradient(135deg, var(--primary), color-mix(in srgb, var(--primary) 65%, #86efac));
+  background: var(--primary);
   color: var(--primary-text);
-  font-size: 14px;
-  box-shadow: var(--shadow-sm);
+  font-size: 18px;
 }
 
 .nav {
@@ -216,5 +234,41 @@
 @media (max-width: 768px) {
   .grid-2 {
     grid-template-columns: 1fr;
+  }
+
+  .dataTable thead {
+    display: none;
+  }
+
+  .dataTable,
+  .dataTable tbody,
+  .dataTable tr,
+  .dataTable td {
+    display: block;
+    width: 100%;
+  }
+
+  .dataTable tr {
+    padding: 12px 14px;
+    border-bottom: 1px solid var(--border);
+  }
+
+  .dataTable td {
+    display: flex;
+    justify-content: space-between;
+    gap: 12px;
+    padding: 6px 0;
+    border-bottom: none;
+  }
+
+  .dataTable td::before {
+    content: attr(data-label);
+    font-weight: 600;
+    color: var(--muted);
+    flex-shrink: 0;
+  }
+
+  .tableWrap {
+    border: none;
   }
 }

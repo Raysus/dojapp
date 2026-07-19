@@ -5,6 +5,7 @@ import { getStudentsByDojo } from '../services/students.service';
 import PageHeader from './ui/PageHeader';
 import EmptyState from './ui/EmptyState';
 import LoadingCard from './ui/LoadingCard';
+import { IconDojo, IconUser } from './icons';
 
 type Grade = { id: string; name: string; order: number };
 type Content = { id: string; title: string; type: string; gradeId: string | null };
@@ -68,9 +69,9 @@ export default function ProfessorDashboard() {
 
       {dojos.length === 0 ? (
         <EmptyState
-          icon="🥋"
+          icon={<IconDojo />}
           title="No tienes dojos asignados"
-          description="Pide a un administrador que te asigne a un dojo."
+          description="Pide a un administrador que te asigne a un dojo como profesor o instructor."
         />
       ) : (
         dojos.map(dojo => (
@@ -80,7 +81,9 @@ export default function ProfessorDashboard() {
           >
             <div className="dojo-cardHeader">
               <div className="dojo-cardTitle">
-                <span className="dojo-cardIcon">🥋</span>
+                <span className="dojo-cardIcon" aria-hidden="true">
+                  <IconDojo />
+                </span>
                 <h3>{dojo.name}</h3>
               </div>
               <button
@@ -134,21 +137,19 @@ export default function ProfessorDashboard() {
               ) : (
                 <ul className="content-list" style={{ marginTop: 12 }}>
                   {students.map(student => (
-                    <li
-                      key={student.id}
-                      className="student-item"
-                      onClick={() =>
-                        navigate(`/dojos/${selectedDojo}/students/${student.id}`)
-                      }
-                      onKeyDown={e => {
-                        if (e.key === 'Enter' || e.key === ' ') {
-                          navigate(`/dojos/${selectedDojo}/students/${student.id}`);
+                    <li key={student.id}>
+                      <button
+                        type="button"
+                        className="listAction"
+                        onClick={() =>
+                          navigate(`/dojos/${selectedDojo}/students/${student.id}`)
                         }
-                      }}
-                      role="button"
-                      tabIndex={0}
-                    >
-                      👤 {student?.name ?? student?.user?.name ?? 'Alumno'}
+                      >
+                        <span aria-hidden="true">
+                          <IconUser />
+                        </span>{' '}
+                        {student?.name ?? student?.user?.name ?? 'Alumno'}
+                      </button>
                     </li>
                   ))}
                 </ul>
@@ -172,13 +173,21 @@ export default function ProfessorDashboard() {
                     ) : (
                       <ul className="content-list">
                         {groupedContents.globals.map(c => (
-                          <li key={c.id} className="content-item unlocked">
-                            <div className="content-listItem">
-                              <div className="content-listItemMain">
-                                <div className="content-listItemTitle">{c.title}</div>
-                                <div className="content-listItemMeta">{c.type} • Global</div>
-                              </div>
-                            </div>
+                          <li key={c.id}>
+                            <button
+                              type="button"
+                              className="listAction"
+                              onClick={() =>
+                                navigate(`/dojos/${selectedDojo}/contents/${c.id}`)
+                              }
+                            >
+                              <span className="content-listItem">
+                                <span className="content-listItemMain">
+                                  <span className="content-listItemTitle">{c.title}</span>
+                                  <span className="content-listItemMeta">{c.type} • Global</span>
+                                </span>
+                              </span>
+                            </button>
                           </li>
                         ))}
                       </ul>
@@ -199,21 +208,21 @@ export default function ProfessorDashboard() {
                           </h4>
                           <ul className="content-list">
                             {group.items.map(c => (
-                              <li
-                                key={c.id}
-                                className="content-item unlocked"
-                                onClick={() =>
-                                  navigate(`/dojos/${selectedDojo}/contents/${c.id}`)
-                                }
-                                role="button"
-                                tabIndex={0}
-                              >
-                                <div className="content-listItem">
-                                  <div className="content-listItemMain">
-                                    <div className="content-listItemTitle">{c.title}</div>
-                                    <div className="content-listItemMeta">{c.type}</div>
-                                  </div>
-                                </div>
+                              <li key={c.id}>
+                                <button
+                                  type="button"
+                                  className="listAction"
+                                  onClick={() =>
+                                    navigate(`/dojos/${selectedDojo}/contents/${c.id}`)
+                                  }
+                                >
+                                  <span className="content-listItem">
+                                    <span className="content-listItemMain">
+                                      <span className="content-listItemTitle">{c.title}</span>
+                                      <span className="content-listItemMeta">{c.type}</span>
+                                    </span>
+                                  </span>
+                                </button>
                               </li>
                             ))}
                           </ul>

@@ -67,6 +67,10 @@ npx prisma migrate deploy
 npm run deploy:seed
 ```
 
+> **Seed en producción:** el entrypoint Docker solo corre seed si `RUN_SEED=true`.
+> Con `NODE_ENV=production` además exige `ALLOW_PROD_SEED=true` (el seed resetea contraseñas demo).
+> Preferible: `npm run deploy:seed` una sola vez desde shell, no dejar `RUN_SEED` permanente.
+
 ### D. Conectar la APK
 En `frontend/.env.production`:
 ```env
@@ -95,12 +99,16 @@ npm run android:release
 - [x] Errores de red más claros en login y dashboards
 - [x] Scripts APK + prueba en teléfono
 - [x] Docker + Railway + Neon listos
+- [x] Sesión segura (401, JWT exp, refresh token 30d / access 2h)
+- [x] Métricas sin N+1 + índices Attendance/Grade
+- [x] Docker slim (`npm ci --omit=dev`)
+- [x] Refresh tokens con rotación/revocación en servidor
+- [x] Asistencia offline (borrador local + sync)
+- [x] Política de privacidad (`/privacy`)
 
 ### Siguiente (beta en dojo real)
-- [ ] Guardar borrador de asistencia offline y sincronizar
-- [ ] Refresh token / sesión más larga en móvil
-- [ ] Feedback visual al completar contenido (desbloqueo animado)
-- [ ] Pantalla de “sin dojo asignado” más guiada
+- [ ] Keystore de producción (no `dojappdev`) y track Play Store
+- [ ] Dominio `api.…` + quitar cleartext en release
 
 ### Antes de Play Store
 - [ ] Keystore de producción (no `dojappdev`)
@@ -119,6 +127,8 @@ npm run android:release
 
 | Comando | Descripción |
 |---------|-------------|
+| `./scripts/docker-up.sh` | Postgres local (Linux/macOS) |
+| `./scripts/qa-api.sh` | Smoke QA de la API |
 | `npm run setup:phone` | IP + firewall + APK debug |
 | `npm run build:apk` | Build web + sync + APK debug |
 | `npm run android:release` | APK release firmada |

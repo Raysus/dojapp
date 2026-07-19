@@ -1,6 +1,6 @@
 import { ForbiddenException, Injectable, NotFoundException } from '@nestjs/common'
 import { PrismaService } from '../prisma/prisma.service'
-import { UserRole } from '@prisma/client'
+import { DojoRole, UserRole } from '@prisma/client'
 
 @Injectable()
 export class DojoContentsService {
@@ -19,21 +19,23 @@ export class DojoContentsService {
         })
         if (!content) throw new NotFoundException('Contenido no existe')
 
-        // ADMIN ve todo
         if (userRole === UserRole.ADMIN) return content
 
-        // si es prof/instructor del dojo, DojoRoleGuard ya validó membership,
-        // entonces puede ver todo el contenido del style
-        if (userRole === UserRole.PROFESSOR) return content
-
-        // STUDENT: validar “hasta su grado” + globales
         const membership = await this.prisma.dojoMembership.findUnique({
             where: { userId_dojoId: { userId, dojoId } },
             select: { role: true },
         })
         if (!membership) throw new ForbiddenException('No perteneces a este dojo')
 
-        // si no tiene gradeId => global
+        // Staff del dojo ve todo el contenido del estilo
+        if (
+            membership.role === DojoRole.PROFESSOR ||
+            membership.role === DojoRole.INSTRUCTOR
+        ) {
+            return content
+        }
+
+        // Alumno: globales + hasta su grado
         if (!content.gradeId) return content
 
         const studentGrade = await this.prisma.studentGrade.findUnique({
@@ -42,7 +44,6 @@ export class DojoContentsService {
         })
         if (!studentGrade?.grade) throw new ForbiddenException('Alumno sin grado asignado')
 
-        // comparar orden del grado
         const contentGrade = await this.prisma.grade.findUnique({
             where: { id: content.gradeId },
             select: { order: true },

@@ -20,7 +20,14 @@ export class PermissionsService {
       where: { userId_dojoId: { userId, dojoId } },
       include: {
         dojo: true,
-        user: true,
+        user: {
+          select: {
+            id: true,
+            email: true,
+            name: true,
+            role: true,
+          },
+        },
       },
     })
   }

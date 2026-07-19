@@ -1,46 +1,79 @@
 import { createContext, useContext, useState, useEffect } from 'react';
 import { jwtDecode } from 'jwt-decode';
-import { getToken, removeToken, setToken } from '../platform/storage';
+import {
+  clearAuthStorage,
+  getRefreshToken,
+  getToken,
+  setRefreshToken,
+  setToken,
+} from '../platform/storage';
 import { setCachedToken } from '../platform/token';
+import { onUnauthorized } from '../platform/authEvents';
+import { logoutRequest, type AuthTokens } from '../services/auth.service';
 
 interface UserPayload {
   sub: string;
   email: string;
   role: 'ADMIN' | 'PROFESSOR' | 'STUDENT';
+  exp?: number;
+  type?: string;
 }
 
 interface AuthContextValue {
   user: UserPayload | null;
   loading: boolean;
-  login: (token: string) => UserPayload | null;
+  login: (tokens: AuthTokens | string) => UserPayload | null;
   logout: () => void;
 }
 
 const AuthContext = createContext<AuthContextValue | null>(null);
 
+function decodeValidToken(token: string): UserPayload | null {
+  try {
+    const decoded = jwtDecode<UserPayload>(token);
+    if (decoded.type === 'refresh') return null;
+    if (decoded.exp != null && decoded.exp * 1000 <= Date.now()) {
+      return null;
+    }
+    if (!decoded.sub || !decoded.role) {
+      return null;
+    }
+    return decoded;
+  } catch {
+    return null;
+  }
+}
+
 export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [user, setUser] = useState<UserPayload | null>(null);
   const [loading, setLoading] = useState(true);
 
-  const login = (token: string) => {
-    try {
-      const decoded = jwtDecode<UserPayload>(token);
-      setCachedToken(token);
-      void setToken(token);
-      setUser(decoded);
-      return decoded;
-    } catch {
+  const login = (tokens: AuthTokens | string) => {
+    const access = typeof tokens === 'string' ? tokens : tokens.access_token;
+    const refresh = typeof tokens === 'string' ? undefined : tokens.refresh_token;
+    const decoded = decodeValidToken(access);
+    if (!decoded) {
       setCachedToken(null);
-      void removeToken();
+      void clearAuthStorage();
       setUser(null);
       return null;
     }
+
+    setCachedToken(access);
+    void setToken(access);
+    if (refresh) void setRefreshToken(refresh);
+    setUser(decoded);
+    return decoded;
   };
 
   const logout = () => {
-    setCachedToken(null);
-    void removeToken();
-    setUser(null);
+    void (async () => {
+      const refresh = await getRefreshToken();
+      await logoutRequest(refresh);
+      setCachedToken(null);
+      await clearAuthStorage();
+      setUser(null);
+    })();
   };
 
   useEffect(() => {
@@ -52,13 +85,13 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       if (!mounted) return;
 
       if (token) {
-        try {
-          const decoded = jwtDecode<UserPayload>(token);
+        const decoded = decodeValidToken(token);
+        if (decoded) {
           setCachedToken(token);
           setUser(decoded);
-        } catch {
+        } else {
           setCachedToken(null);
-          await removeToken();
+          await clearAuthStorage();
           setUser(null);
         }
       }
@@ -71,6 +104,14 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     return () => {
       mounted = false;
     };
+  }, []);
+
+  useEffect(() => {
+    return onUnauthorized(() => {
+      setCachedToken(null);
+      void clearAuthStorage();
+      setUser(null);
+    });
   }, []);
 
   return (

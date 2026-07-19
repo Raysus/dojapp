@@ -1,0 +1,12 @@
+{
+  "name": "dojapp",
+  "private": true,
+  "scripts": {
+    "db:up": "./scripts/docker-up.sh",
+    "qa:api": "./scripts/qa-api.sh",
+    "backend:dev": "npm --prefix backend run start:dev",
+    "frontend:dev": "npm --prefix frontend run dev",
+    "backend:migrate": "npm --prefix backend exec -- dotenv -e .env -- prisma migrate deploy",
+    "backend:seed": "npm --prefix backend run deploy:seed"
+  }
+}

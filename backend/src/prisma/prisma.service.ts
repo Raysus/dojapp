@@ -8,6 +8,16 @@ export class PrismaService
   student: any;
   professor: any;
 
+  constructor() {
+    super({
+      omit: {
+        user: {
+          password: true,
+        },
+      },
+    });
+  }
+
   async onModuleInit() {
     await this.$connect();
   }

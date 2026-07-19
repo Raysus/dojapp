@@ -28,6 +28,7 @@ a {
 h1,
 h2,
 h3 {
+  font-family: var(--font-display);
   font-weight: 700;
   letter-spacing: -0.02em;
   margin-bottom: 0;
@@ -269,6 +270,31 @@ ul {
   border-radius: 6px;
 }
 
+.skeleton-title {
+  height: 28px;
+  width: 55%;
+  margin-bottom: 16px;
+}
+
+.skeleton-bar {
+  height: 12px;
+  width: 100%;
+  margin-bottom: 10px;
+}
+
+.skeleton-text {
+  height: 12px;
+  width: 72%;
+  margin-bottom: 8px;
+}
+
+.skeleton-item {
+  height: 44px;
+  width: 100%;
+  margin-top: 10px;
+  list-style: none;
+}
+
 @keyframes skeleton-loading {
   0% { background-position: 100% 0; }
   100% { background-position: -100% 0; }
@@ -287,10 +313,22 @@ ul {
   border-color: #fecaca;
 }
 
+.alert.success {
+  color: #166534;
+  background: #f0fdf4;
+  border-color: #bbf7d0;
+}
+
 :root[data-theme='dark'] .alert.error {
   color: #fecaca;
   background: rgba(127, 29, 29, 0.35);
   border-color: rgba(248, 113, 113, 0.35);
+}
+
+:root[data-theme='dark'] .alert.success {
+  color: #bbf7d0;
+  background: rgba(20, 83, 45, 0.35);
+  border-color: rgba(74, 222, 128, 0.35);
 }
 
 .pageHeader {
@@ -355,6 +393,19 @@ ul {
 .emptyStateIcon {
   font-size: 2rem;
   margin-bottom: 10px;
+  line-height: 1;
+  display: grid;
+  place-items: center;
+  color: var(--primary);
+}
+
+.emptyStateIcon svg {
+  width: 2rem;
+  height: 2rem;
+}
+
+.content-complete-done {
+  opacity: 0.9;
 }
 
 .emptyStateTitle {
@@ -427,11 +478,11 @@ ul {
 }
 
 .student-item {
-  padding: 14px;
+  padding: 0;
   border-radius: var(--radius-sm);
   border: 1px solid var(--border);
-  cursor: pointer;
   transition: background 0.15s ease, border-color 0.15s ease;
+  list-style: none;
 }
 
 .student-item:hover {
@@ -442,6 +493,99 @@ ul {
 .student-item.present {
   border-color: color-mix(in srgb, var(--success) 35%, var(--border));
   background: color-mix(in srgb, var(--success) 8%, var(--card));
+}
+
+.attendanceRow {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  width: 100%;
+  padding: 14px;
+  cursor: pointer;
+}
+
+.attendanceRow-control {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-shrink: 0;
+}
+
+.listAction {
+  display: block;
+  width: 100%;
+  text-align: left;
+  padding: 14px;
+  border-radius: var(--radius-sm);
+  border: 1px solid var(--border);
+  background: var(--card);
+  color: inherit;
+  cursor: pointer;
+  font: inherit;
+  transition: background 0.15s ease, border-color 0.15s ease;
+}
+
+.listAction:hover {
+  background: var(--primary-soft);
+  border-color: color-mix(in srgb, var(--primary) 25%, var(--border));
+}
+
+.listActionCard {
+  display: flex;
+  width: 100%;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  text-align: left;
+  cursor: pointer;
+  font: inherit;
+  color: inherit;
+}
+
+.content-embed {
+  width: 100%;
+  height: min(70vh, 700px);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  background: var(--bg);
+}
+
+.content-embed--video {
+  height: min(56vw, 500px);
+  aspect-ratio: 16 / 9;
+}
+
+.srOnly {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border: 0;
+}
+
+.button:focus-visible,
+.navLink:focus-visible,
+.listAction:focus-visible,
+.tabButton:focus-visible,
+.input:focus-visible,
+.mobileTab:focus-visible {
+  outline: 2px solid var(--primary);
+  outline-offset: 2px;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
 }
 
 input[type='checkbox'] {

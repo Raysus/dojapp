@@ -4,6 +4,11 @@ import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard'
 import { Roles } from '../authorization/decorators/roles.decorator'
 import { RolesGuard } from '../authorization/guards/roles.guard'
 import { AdminService } from './admin.service'
+import {
+  AssignUserToDojoDto,
+  CreateAdminContentDto,
+  CreateAdminUserDto,
+} from './dto/admin.dto'
 
 @Controller('admin')
 @UseGuards(JwtAuthGuard, RolesGuard)
@@ -27,30 +32,14 @@ export class AdminController {
   }
 
   @Post('users')
-  async createUser(
-    @Body()
-    body: {
-      email: string
-      password: string
-      name: string
-      role: UserRole
-      dojoId?: string
-      dojoRole?: 'STUDENT' | 'INSTRUCTOR' | 'PROFESSOR'
-      gradeId?: string
-    },
-  ) {
+  async createUser(@Body() body: CreateAdminUserDto) {
     return this.adminService.createUser(body)
   }
 
   @Post('users/:userId/assign')
   async assignUserToDojo(
     @Param('userId') userId: string,
-    @Body()
-    body: {
-      dojoId: string
-      dojoRole: 'STUDENT' | 'INSTRUCTOR' | 'PROFESSOR'
-      gradeId?: string
-    },
+    @Body() body: AssignUserToDojoDto,
   ) {
     return this.adminService.assignUserToDojo(userId, body)
   }
@@ -68,14 +57,7 @@ export class AdminController {
   @Post('dojos/:dojoId/contents')
   async createContent(
     @Param('dojoId') dojoId: string,
-    @Body()
-    body: {
-      title: string
-      type: 'PDF' | 'VIDEO' | 'TEXT' | 'LINK'
-      url?: string
-      body?: string
-      gradeId?: string
-    },
+    @Body() body: CreateAdminContentDto,
     @Req() req,
   ) {
     return this.adminService.createContent(dojoId, req.user.sub, body)

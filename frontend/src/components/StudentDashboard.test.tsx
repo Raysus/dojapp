@@ -23,7 +23,7 @@ describe('StudentDashboard', () => {
 
     renderWithProviders(<StudentDashboard />);
 
-    expect(await screen.findByText('Sin contenidos disponibles')).toBeInTheDocument();
+    expect(await screen.findByText('Sin dojo asignado')).toBeInTheDocument();
   });
 
   it('renders dojo stats and content list', async () => {

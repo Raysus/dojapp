@@ -38,33 +38,23 @@ export class AttendanceService {
   }) {
     // 🔐 defensa en profundidad (aunque el controller ya tenga guards)
     await this.authz.assertInstructorInDojo(takenById, dojoId)
+    await this.authz.assertStudentInDojo(userId, dojoId)
 
     const day = startOfDay(date ?? new Date())
 
-    const existing = await this.prisma.attendance.findFirst({
+    return this.prisma.attendance.upsert({
       where: {
-        dojoId,
-        userId,
-        date: {
-          gte: startOfDay(day),
-          lte: endOfDay(day),
-        },
-      },
-    })
-
-    if (existing) {
-      return this.prisma.attendance.update({
-        where: { id: existing.id },
-        data: {
-          present,
-          takenById,
+        dojoId_userId_date: {
+          dojoId,
+          userId,
           date: day,
         },
-      })
-    }
-
-    return this.prisma.attendance.create({
-      data: {
+      },
+      update: {
+        present,
+        takenById,
+      },
+      create: {
         dojoId,
         userId,
         present,
@@ -74,6 +64,48 @@ export class AttendanceService {
     })
   }
 
+  async markAttendanceBatch({
+    dojoId,
+    takenById,
+    items,
+  }: {
+    dojoId: string
+    takenById: string
+    items: Array<{ userId: string; present: boolean; date?: Date }>
+  }) {
+    await this.authz.assertInstructorInDojo(takenById, dojoId)
+
+    for (const item of items) {
+      await this.authz.assertStudentInDojo(item.userId, dojoId)
+    }
+
+    return this.prisma.$transaction(
+      items.map((item) => {
+        const day = startOfDay(item.date ?? new Date())
+        return this.prisma.attendance.upsert({
+          where: {
+            dojoId_userId_date: {
+              dojoId,
+              userId: item.userId,
+              date: day,
+            },
+          },
+          update: {
+            present: item.present,
+            takenById,
+          },
+          create: {
+            dojoId,
+            userId: item.userId,
+            present: item.present,
+            takenById,
+            date: day,
+          },
+        })
+      }),
+    )
+  }
+
   async getAttendanceForDate(dojoId: string, requestedById: string, date?: string) {
     await this.authz.assertInstructorInDojo(requestedById, dojoId)
 
@@ -81,7 +113,9 @@ export class AttendanceService {
 
     const memberships = await this.prisma.dojoMembership.findMany({
       where: { dojoId, role: DojoRole.STUDENT },
-      include: { user: true },
+      include: {
+        user: { select: { id: true, name: true } },
+      },
       orderBy: { user: { name: 'asc' } },
     })
 
@@ -116,34 +150,37 @@ export class AttendanceService {
 
     const memberships = await this.prisma.dojoMembership.findMany({
       where: { dojoId, role: DojoRole.STUDENT },
-      include: { user: true },
+      include: {
+        user: { select: { id: true, name: true } },
+      },
       orderBy: { user: { name: 'asc' } },
     })
 
     // Calcula "cantidad de clases" como cantidad de días distintos donde se tomó asistencia.
     // Como guardamos la fecha normalizada a startOfDay(), esto es consistente.
-    const distinctDays = await this.prisma.attendance.groupBy({
-      by: ['date'],
-      where: { dojoId },
-    })
+    const [distinctDays, attendedByUser] = await Promise.all([
+      this.prisma.attendance.groupBy({
+        by: ['date'],
+        where: { dojoId },
+      }),
+      this.prisma.attendance.groupBy({
+        by: ['userId'],
+        where: { dojoId, present: true },
+        _count: { _all: true },
+      }),
+    ])
     const totalClasses = distinctDays.length
+    const attendedMap = new Map(
+      attendedByUser.map(row => [row.userId, row._count._all]),
+    )
 
-    const metrics: AttendanceMetric[] = []
-
-    for (const m of memberships) {
-      const attendedClasses = await this.prisma.attendance.count({
-        where: {
-          dojoId,
-          userId: m.userId,
-          present: true,
-        },
-      })
-
+    const metrics: AttendanceMetric[] = memberships.map(m => {
+      const attendedClasses = attendedMap.get(m.userId) ?? 0
       const attendancePercentage = totalClasses
         ? Math.round((attendedClasses / totalClasses) * 100)
         : 0
 
-      metrics.push({
+      return {
         userId: m.userId,
         userName: m.user.name,
         dojoId,
@@ -151,8 +188,8 @@ export class AttendanceService {
         totalClasses,
         attendedClasses,
         attendancePercentage,
-      })
-    }
+      }
+    })
 
     const avgAttendancePercentage = metrics.length
       ? Math.round(metrics.reduce((acc, x) => acc + x.attendancePercentage, 0) / metrics.length)

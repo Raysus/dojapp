@@ -1,4 +1,4 @@
-import { Injectable } from '@nestjs/common'
+import { Injectable, UnauthorizedException } from '@nestjs/common'
 import { PassportStrategy } from '@nestjs/passport'
 import { ExtractJwt, Strategy } from 'passport-jwt'
 import { UserRole } from '@prisma/client'
@@ -12,6 +12,7 @@ type JwtPayload = {
   sub: string
   email: string
   role: UserRole
+  type?: string
 }
 
 @Injectable()
@@ -25,7 +26,9 @@ export class JwtStrategy extends PassportStrategy(Strategy) {
   }
 
   async validate(payload: JwtPayload) {
-    // Retornar el payload deja disponible req.user.sub / req.user.role etc.
+    if (payload.type === 'refresh') {
+      throw new UnauthorizedException('Token de acceso requerido')
+    }
     return payload
   }
 }

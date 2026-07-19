@@ -1,5 +1,5 @@
-import { useEffect, useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useEffect, useRef, useState } from 'react';
+import { Link, useNavigate } from 'react-router-dom';
 import { getNetworkErrorMessage } from '../hooks/useNetworkStatus';
 import {
   getMyContents,
@@ -11,12 +11,15 @@ import PageHeader from './ui/PageHeader';
 import StatCard from './ui/StatCard';
 import EmptyState from './ui/EmptyState';
 import LoadingCard from './ui/LoadingCard';
+import { IconDojo } from './icons';
 
 export default function StudentDashboard() {
   const [items, setItems] = useState<StudentContentsByDojo[]>([]);
   const [stats, setStats] = useState<StudentStatsByDojo[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [justUnlocked, setJustUnlocked] = useState<Set<string>>(new Set());
+  const prevIds = useRef<Set<string>>(new Set());
   const navigate = useNavigate();
 
   useEffect(() => {
@@ -27,6 +30,20 @@ export default function StudentDashboard() {
           getMyContents(),
           getMyStats().catch(() => [] as StudentStatsByDojo[]),
         ]);
+
+        const nextIds = new Set(contents.flatMap(b => b.contents.map(c => c.id)));
+        if (prevIds.current.size > 0) {
+          const unlocked = new Set<string>();
+          nextIds.forEach(id => {
+            if (!prevIds.current.has(id)) unlocked.add(id);
+          });
+          if (unlocked.size) {
+            setJustUnlocked(unlocked);
+            window.setTimeout(() => setJustUnlocked(new Set()), 1200);
+          }
+        }
+        prevIds.current = nextIds;
+
         setItems(contents);
         setStats(s);
       } catch (e) {
@@ -42,11 +59,22 @@ export default function StudentDashboard() {
   if (error) return <div className="card alert error">{error}</div>;
   if (!items.length) {
     return (
-      <EmptyState
-        icon="🥋"
-        title="Sin contenidos disponibles"
-        description="Cuando tu sensei publique material para tu grado, aparecerá aquí."
-      />
+      <div className="stack">
+        <PageHeader
+          title="Mi entrenamiento"
+          subtitle="Aún no tienes un dojo o contenidos asignados."
+        />
+        <EmptyState
+          icon={<IconDojo />}
+          title="Sin dojo asignado"
+          description="Pide a tu sensei o a un administrador que te asigne a un dojo y un grado. Cuando lo hagan, verás aquí tus contenidos."
+        />
+        <div className="row">
+          <Link className="button secondary" to="/account">
+            Ir a mi cuenta
+          </Link>
+        </div>
+      </div>
     );
   }
 
@@ -65,7 +93,9 @@ export default function StudentDashboard() {
             <div className="card">
               <div className="dojo-cardHeader">
                 <div className="dojo-cardTitle">
-                  <span className="dojo-cardIcon">🥋</span>
+                  <span className="dojo-cardIcon" aria-hidden="true">
+                    <IconDojo />
+                  </span>
                   <div>
                     <h2>{block.dojoName}</h2>
                     <p className="muted">Grado: {block.grade}</p>
@@ -99,31 +129,30 @@ export default function StudentDashboard() {
             <div className="card">
               <h3>Contenidos</h3>
               {block.contents.length === 0 ? (
-                <p className="muted">No hay contenidos disponibles en este dojo.</p>
+                <EmptyState
+                  icon={<IconDojo />}
+                  title="Sin contenidos en este dojo"
+                  description="Cuando tu sensei publique material para tu grado, aparecerá aquí."
+                />
               ) : (
                 <ul className="content-list" style={{ marginTop: 14 }}>
                   {block.contents.map(c => (
-                    <li
-                      key={c.id}
-                      className="content-item unlocked"
-                      onClick={() => navigate(`/dojos/${block.dojoId}/contents/${c.id}`)}
-                      onKeyDown={e => {
-                        if (e.key === 'Enter' || e.key === ' ') {
-                          navigate(`/dojos/${block.dojoId}/contents/${c.id}`);
-                        }
-                      }}
-                      role="button"
-                      tabIndex={0}
-                    >
-                      <div className="content-listItem">
-                        <div className="content-listItemMain">
-                          <div className="content-listItemTitle">{c.title}</div>
-                          <div className="content-listItemMeta">
-                            {c.gradeId ? 'Por grado' : 'Global'}
-                          </div>
-                        </div>
-                        <span className="content-typeBadge">{c.type}</span>
-                      </div>
+                    <li key={c.id}>
+                      <button
+                        type="button"
+                        className={`listAction content-item unlocked${justUnlocked.has(c.id) ? ' just-unlocked' : ''}`}
+                        onClick={() => navigate(`/dojos/${block.dojoId}/contents/${c.id}`)}
+                      >
+                        <span className="content-listItem">
+                          <span className="content-listItemMain">
+                            <span className="content-listItemTitle">{c.title}</span>
+                            <span className="content-listItemMeta">
+                              {c.gradeId ? 'Por grado' : 'Global'}
+                            </span>
+                          </span>
+                          <span className="content-typeBadge">{c.type}</span>
+                        </span>
+                      </button>
                     </li>
                   ))}
                 </ul>

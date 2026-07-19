@@ -1,9 +1,8 @@
 import { Controller, Get, Req, UseGuards, Param } from '@nestjs/common';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
-import { Roles } from '../authorization/decorators/roles.decorator';
 import { DojosService } from './dojos.service';
 import { DojoRoleGuard } from 'src/authorization/guards/dojo-role.guard';
-import { DojoRole, UserRole } from '@prisma/client';
+import { DojoRole } from '@prisma/client';
 import { DojoRoles } from 'src/authorization/decorators/dojo-roles.decorator';
 
 @Controller('dojos')
@@ -11,8 +10,8 @@ import { DojoRoles } from 'src/authorization/decorators/dojo-roles.decorator';
 export class DojosController {
     constructor(private readonly dojosService: DojosService) { }
 
+    /** Any authenticated user — filtered to professor/instructor memberships. */
     @Get('mine')
-    @Roles(UserRole.PROFESSOR)
     getMine(@Req() req) {
         return this.dojosService.getByProfessor(req.user.sub);
     }

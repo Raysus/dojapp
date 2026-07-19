@@ -45,17 +45,15 @@ export class AttendanceController {
             return []
         }
 
-        return Promise.all(
-            items.map((item) =>
-                this.attendanceService.markAttendance({
-                    dojoId,
-                    userId: item.userId,
-                    present: item.present,
-                    takenById,
-                    date: item.date ? new Date(item.date) : undefined,
-                }),
-            ),
-        )
+        return this.attendanceService.markAttendanceBatch({
+            dojoId,
+            takenById,
+            items: items.map((item) => ({
+                userId: item.userId,
+                present: item.present,
+                date: item.date ? new Date(item.date) : undefined,
+            })),
+        })
     }
 
     @UseGuards(JwtAuthGuard, DojoRoleGuard)

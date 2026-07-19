@@ -1,24 +1,40 @@
+import { lazy, Suspense } from 'react';
 import { Routes, Route, Navigate } from 'react-router-dom';
-import ProfessorDashboard from './components/ProfessorDashboard';
-import StudentDashboard from './components/StudentDashboard';
-import StudentDetail from './pages/StudentDetail';
 import RoleGuard from './guards/RoleGuard';
-import Unauthorized from './pages/Unauthorized';
 import AuthGuard from './guards/AuthGuard';
 import Layout from './components/Layout';
 import Home from './pages/Home';
-import AdminDashboard from './pages/AdminDashboard';
-import ContentViewer from './pages/ContentViewer';
-import DojoStats from './pages/DojoStats';
-import DojoAttendance from './pages/DojoAttendance';
 import Login from './pages/Login';
-import AccountPage from './pages/AccountPage';
-import ProfessorAttendanceHub from './pages/ProfessorAttendanceHub';
+import LoadingCard from './components/ui/LoadingCard';
+
+const ProfessorDashboard = lazy(() => import('./components/ProfessorDashboard'));
+const StudentDashboard = lazy(() => import('./components/StudentDashboard'));
+const StudentDetail = lazy(() => import('./pages/StudentDetail'));
+const Unauthorized = lazy(() => import('./pages/Unauthorized'));
+const AdminDashboard = lazy(() => import('./pages/AdminDashboard'));
+const ContentViewer = lazy(() => import('./pages/ContentViewer'));
+const DojoStats = lazy(() => import('./pages/DojoStats'));
+const DojoAttendance = lazy(() => import('./pages/DojoAttendance'));
+const AccountPage = lazy(() => import('./pages/AccountPage'));
+const ProfessorAttendanceHub = lazy(() => import('./pages/ProfessorAttendanceHub'));
+const PrivacyPage = lazy(() => import('./pages/PrivacyPage'));
+
+function LazyPage({ children }: { children: React.ReactNode }) {
+  return <Suspense fallback={<LoadingCard message="Cargando…" />}>{children}</Suspense>;
+}
 
 export default function App() {
   return (
     <Routes>
       <Route path="/login" element={<Login />} />
+      <Route
+        path="/privacy"
+        element={
+          <LazyPage>
+            <PrivacyPage />
+          </LazyPage>
+        }
+      />
 
       <Route element={<Layout />}>
         <Route path="/" element={<Home />} />
@@ -28,7 +44,9 @@ export default function App() {
           element={
             <AuthGuard>
               <RoleGuard role="ADMIN">
-                <AdminDashboard />
+                <LazyPage>
+                  <AdminDashboard />
+                </LazyPage>
               </RoleGuard>
             </AuthGuard>
           }
@@ -39,7 +57,9 @@ export default function App() {
           element={
             <AuthGuard>
               <RoleGuard role="PROFESSOR">
-                <ProfessorDashboard />
+                <LazyPage>
+                  <ProfessorDashboard />
+                </LazyPage>
               </RoleGuard>
             </AuthGuard>
           }
@@ -50,7 +70,9 @@ export default function App() {
           element={
             <AuthGuard>
               <RoleGuard role="PROFESSOR">
-                <ProfessorAttendanceHub />
+                <LazyPage>
+                  <ProfessorAttendanceHub />
+                </LazyPage>
               </RoleGuard>
             </AuthGuard>
           }
@@ -61,7 +83,9 @@ export default function App() {
           element={
             <AuthGuard>
               <RoleGuard role="PROFESSOR">
-                <StudentDetail />
+                <LazyPage>
+                  <StudentDetail />
+                </LazyPage>
               </RoleGuard>
             </AuthGuard>
           }
@@ -72,7 +96,9 @@ export default function App() {
           element={
             <AuthGuard>
               <RoleGuard role="STUDENT">
-                <StudentDashboard />
+                <LazyPage>
+                  <StudentDashboard />
+                </LazyPage>
               </RoleGuard>
             </AuthGuard>
           }
@@ -82,7 +108,9 @@ export default function App() {
           path="/account"
           element={
             <AuthGuard>
-              <AccountPage />
+              <LazyPage>
+                <AccountPage />
+              </LazyPage>
             </AuthGuard>
           }
         />
@@ -91,7 +119,9 @@ export default function App() {
           path="/dojos/:dojoId/contents/:contentId"
           element={
             <AuthGuard>
-              <ContentViewer />
+              <LazyPage>
+                <ContentViewer />
+              </LazyPage>
             </AuthGuard>
           }
         />
@@ -101,7 +131,9 @@ export default function App() {
           element={
             <AuthGuard>
               <RoleGuard role="PROFESSOR">
-                <DojoStats />
+                <LazyPage>
+                  <DojoStats />
+                </LazyPage>
               </RoleGuard>
             </AuthGuard>
           }
@@ -112,13 +144,22 @@ export default function App() {
           element={
             <AuthGuard>
               <RoleGuard role="PROFESSOR">
-                <DojoAttendance />
+                <LazyPage>
+                  <DojoAttendance />
+                </LazyPage>
               </RoleGuard>
             </AuthGuard>
           }
         />
 
-        <Route path="/unauthorized" element={<Unauthorized />} />
+        <Route
+          path="/unauthorized"
+          element={
+            <LazyPage>
+              <Unauthorized />
+            </LazyPage>
+          }
+        />
       </Route>
 
       <Route path="*" element={<Navigate to="/" replace />} />

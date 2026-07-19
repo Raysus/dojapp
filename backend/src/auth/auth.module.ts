@@ -6,13 +6,23 @@ import { AuthController } from './auth.controller';
 import { JwtStrategy } from './jwt.strategy';
 import { PrismaModule } from '../prisma/prisma.module';
 
+const jwtSecret = process.env.JWT_SECRET;
+if (!jwtSecret) {
+  // Fail early in production-like boots; tests can set JWT_SECRET in env.
+  if (process.env.NODE_ENV === 'production') {
+    throw new Error('Missing JWT_SECRET environment variable');
+  }
+}
+
 @Module({
   imports: [
     PrismaModule,
     PassportModule,
     JwtModule.register({
-      secret: process.env.JWT_SECRET,
-      signOptions: { expiresIn: '1d' },
+      secret: jwtSecret ?? 'dev-only-jwt-secret-change-me',
+      signOptions: {
+        expiresIn: 60 * 60 * 2,
+      },
     }),
   ],
   controllers: [AuthController],

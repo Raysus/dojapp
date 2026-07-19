@@ -1,7 +1,20 @@
 import { Browser } from '@capacitor/browser';
 import { isNativeApp } from './native';
 
+export function isSafeHttpUrl(url: string): boolean {
+  try {
+    const parsed = new URL(url);
+    return parsed.protocol === 'https:' || parsed.protocol === 'http:';
+  } catch {
+    return false;
+  }
+}
+
 export async function openExternalUrl(url: string): Promise<void> {
+  if (!isSafeHttpUrl(url)) {
+    throw new Error('URL no permitida');
+  }
+
   if (isNativeApp()) {
     await Browser.open({ url, presentationStyle: 'fullscreen' });
     return;

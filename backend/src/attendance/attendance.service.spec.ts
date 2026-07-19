@@ -11,10 +11,15 @@ describe('AttendanceService', () => {
       providers: [
         AttendanceService,
         { provide: PrismaService, useValue: {
-          attendance: { findFirst: jest.fn(), update: jest.fn(), create: jest.fn(), count: jest.fn() },
+          attendance: { upsert: jest.fn(), findMany: jest.fn(), count: jest.fn(), groupBy: jest.fn() },
           dojoMembership: { findMany: jest.fn() },
+          dojo: { findUnique: jest.fn() },
+          $transaction: jest.fn(async (ops) => Promise.all(ops)),
         } },
-        { provide: AuthorizationService, useValue: { assertInstructorInDojo: jest.fn() } },
+        { provide: AuthorizationService, useValue: {
+          assertInstructorInDojo: jest.fn(),
+          assertStudentInDojo: jest.fn(),
+        } },
       ],
     }).compile()
 

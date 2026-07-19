@@ -1,4 +1,4 @@
-import { useNavigate } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
 import { useAuth } from '../auth/AuthContext';
 import { ThemeToggle } from '../components/Theme';
 import PageHeader from '../components/ui/PageHeader';
@@ -44,6 +44,10 @@ export default function AccountPage() {
       <button className="button secondary" type="button" onClick={handleLogout}>
         Cerrar sesión
       </button>
+
+      <Link className="link" to="/privacy">
+        Política de privacidad
+      </Link>
     </div>
   );
 }

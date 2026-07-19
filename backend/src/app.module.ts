@@ -1,5 +1,6 @@
 import { Module } from '@nestjs/common'
 import { ConfigModule } from '@nestjs/config'
+import { ThrottlerGuard, ThrottlerModule } from '@nestjs/throttler'
 import { PrismaModule } from './prisma/prisma.module'
 import { HealthModule } from './health/health.module'
 import { UsersModule } from './users/users.module'
@@ -18,6 +19,13 @@ import { AdminModule } from './admin/admin.module'
 @Module({
   imports: [
     ConfigModule.forRoot({ isGlobal: true }),
+    ThrottlerModule.forRoot([
+      {
+        name: 'default',
+        ttl: 60_000,
+        limit: 120,
+      },
+    ]),
     PrismaModule,
     HealthModule,
     UsersModule,
@@ -32,6 +40,7 @@ import { AdminModule } from './admin/admin.module'
   ],
   providers: [
     // IMPORTANT: JwtAuthGuard must run BEFORE RolesGuard so req.user exists.
+    { provide: APP_GUARD, useClass: ThrottlerGuard },
     { provide: APP_GUARD, useClass: JwtAuthGuard },
     { provide: APP_GUARD, useClass: RolesGuard },
   ],

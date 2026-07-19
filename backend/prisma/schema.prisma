@@ -55,6 +55,21 @@ model User {
   studentContents          StudentContent[]
   studentGrades            StudentGrade[]
   studentProgressSnapshots StudentProgressSnapshot[]
+  refreshTokens            RefreshToken[]
+}
+
+model RefreshToken {
+  id        String    @id @default(uuid())
+  userId    String
+  tokenHash String    @unique
+  expiresAt DateTime
+  revokedAt DateTime?
+  createdAt DateTime  @default(now())
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@index([expiresAt])
 }
 
 model Style {
@@ -93,6 +108,7 @@ model DojoMembership {
   dojo Dojo @relation(fields: [dojoId], references: [id])
 
   @@unique([userId, dojoId])
+  @@index([dojoId, role])
 }
 
 model Grade {
@@ -107,6 +123,9 @@ model Grade {
   userStyles               UserStyle[]
   studentGrades            StudentGrade[]
   studentProgressSnapshots StudentProgressSnapshot[]
+
+  @@unique([styleId, order])
+  @@unique([styleId, name])
 }
 
 model StudentGrade {
@@ -149,6 +168,8 @@ model Content {
   grade       Grade? @relation(fields: [gradeId], references: [id])
 
   studentContents StudentContent[]
+
+  @@index([styleId, gradeId])
 }
 
 model StudentContent {
@@ -199,6 +220,10 @@ model Attendance {
   user User @relation("AttendanceStudent", fields: [userId], references: [id])
 
   takenBy User @relation("AttendanceTakenBy", fields: [takenById], references: [id])
+
+  @@unique([dojoId, userId, date])
+  @@index([dojoId, date])
+  @@index([userId, date])
 }
 
 model StudentProgressSnapshot {

@@ -31,22 +31,23 @@ describe('Login', () => {
 
     renderWithProviders(<Login />);
 
-    await userEvent.type(screen.getByPlaceholderText('Email'), 'alumno@dojo.cl');
-    await userEvent.type(screen.getByPlaceholderText('Password'), 'wrong');
+    await userEvent.type(await screen.findByLabelText('Email'), 'alumno@dojo.cl');
+    await userEvent.type(screen.getByLabelText('Contraseña'), 'wrongpass');
     await userEvent.click(screen.getByRole('button', { name: 'Entrar' }));
 
-    expect(await screen.findByText(/No se pudo conectar con el servidor/i)).toBeInTheDocument();
+    expect(await screen.findByRole('alert')).toHaveTextContent(/No se pudo conectar con el servidor/i);
   });
 
   it('redirects student after successful login', async () => {
-    vi.mocked(loginRequest).mockResolvedValueOnce(
-      makeJwt({ sub: '1', email: 'alumno@dojo.cl', role: 'STUDENT' }),
-    );
+    vi.mocked(loginRequest).mockResolvedValueOnce({
+      access_token: makeJwt({ sub: '1', email: 'alumno@dojo.cl', role: 'STUDENT', type: 'access' }),
+      refresh_token: makeJwt({ sub: '1', email: 'alumno@dojo.cl', role: 'STUDENT', type: 'refresh' }),
+    });
 
     renderWithProviders(<Login />);
 
-    await userEvent.type(screen.getByPlaceholderText('Email'), 'alumno@dojo.cl');
-    await userEvent.type(screen.getByPlaceholderText('Password'), '123456');
+    await userEvent.type(await screen.findByLabelText('Email'), 'alumno@dojo.cl');
+    await userEvent.type(screen.getByLabelText('Contraseña'), '123456');
     await userEvent.click(screen.getByRole('button', { name: 'Entrar' }));
 
     await waitFor(() => {
