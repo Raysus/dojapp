@@ -8,4 +8,5 @@ export interface Content {
   body?: string | null;
   gradeId?: string | null;
   createdAt?: string; // ISO
+  completed?: boolean;
 }

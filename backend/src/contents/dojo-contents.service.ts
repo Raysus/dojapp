@@ -35,8 +35,16 @@ export class DojoContentsService {
             return content
         }
 
+        const progress = await this.prisma.studentContent.findUnique({
+            where: {
+                userId_contentId: { userId, contentId },
+            },
+            select: { completed: true },
+        })
+        const withProgress = { ...content, completed: progress?.completed ?? false }
+
         // Alumno: globales + hasta su grado
-        if (!content.gradeId) return content
+        if (!content.gradeId) return withProgress
 
         const studentGrade = await this.prisma.studentGrade.findUnique({
             where: { userId_dojoId: { userId, dojoId } },
@@ -50,7 +58,7 @@ export class DojoContentsService {
         })
         if (!contentGrade) throw new ForbiddenException('Grado del contenido inválido')
 
-        if (contentGrade.order <= studentGrade.grade.order) return content
+        if (contentGrade.order <= studentGrade.grade.order) return withProgress
 
         throw new ForbiddenException('Contenido no disponible para tu grado')
     }

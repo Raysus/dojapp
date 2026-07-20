@@ -132,13 +132,32 @@ export default function StudentDetail() {
     <div className="stack">
       <PageHeader
         title={student.name}
-        subtitle={visible ? `${visible.dojoName} · ${currentGradeLabel}` : 'Sin grado asignado en este dojo'}
+        subtitle={
+          visible
+            ? `${visible.dojoName} · ${currentGradeLabel}`
+            : `${student.email} · Sin grado asignado en este dojo`
+        }
         action={
           <button className="button secondary" type="button" onClick={goBack}>
             ← Volver
           </button>
         }
       />
+
+      <div className="card">
+        <div className="formGrid">
+          <div>
+            <div className="muted">Correo</div>
+            <div style={{ fontWeight: 700, marginTop: 4 }}>{student.email}</div>
+          </div>
+          <div>
+            <div className="muted">Grado actual</div>
+            <div style={{ fontWeight: 700, marginTop: 4 }}>
+              {currentGradeLabel || 'Sin grado'}
+            </div>
+          </div>
+        </div>
+      </div>
 
       {missingGrade ? (
         <div className="alert error">

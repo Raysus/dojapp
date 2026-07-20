@@ -161,7 +161,23 @@ export default function AccountPage() {
   if (!user) return null;
   if (loading) return <LoadingCard message="Cargando cuenta…" />;
 
-  const memberSince = profile?.createdAt
+  if (!profile) {
+    return (
+      <div className="stack">
+        <PageHeader title="Mi cuenta" subtitle="No se pudo cargar tu perfil." />
+        {error ? <div className="alert error">{error}</div> : null}
+        <button
+          className="button"
+          type="button"
+          onClick={() => window.location.reload()}
+        >
+          Reintentar
+        </button>
+      </div>
+    );
+  }
+
+  const memberSince = profile.createdAt
     ? new Date(profile.createdAt).toLocaleDateString('es-CL', {
         year: 'numeric',
         month: 'long',
@@ -173,7 +189,14 @@ export default function AccountPage() {
     <div className="stack">
       <PageHeader
         title="Mi cuenta"
-        subtitle="Edita tu perfil, seguridad y preferencias."
+        subtitle="Edita tu nombre, correo, contraseña y preferencias."
+        action={
+          user.role === 'STUDENT' ? (
+            <Link className="button secondary" to="/student">
+              Ir a entrenamiento
+            </Link>
+          ) : undefined
+        }
       />
 
       {error ? <div className="alert error">{error}</div> : null}
@@ -182,14 +205,14 @@ export default function AccountPage() {
       <section className="card stack">
         <h2 style={{ margin: 0 }}>Perfil</h2>
         <p className="muted" style={{ marginTop: 0 }}>
-          Rol: <strong>{roleLabels[profile?.role ?? user.role] ?? user.role}</strong>
+          Rol: <strong>{roleLabels[profile.role] ?? profile.role}</strong>
           {' · '}Miembro desde {memberSince}
         </p>
 
         <form className="form" onSubmit={e => void onSaveProfile(e)}>
           <div className="formGrid">
             <label className="fieldLabel">
-              Nombre
+              Nombre completo
               <input
                 className="input"
                 value={name}
@@ -200,7 +223,7 @@ export default function AccountPage() {
               />
             </label>
             <label className="fieldLabel">
-              Correo
+              Correo electrónico
               <input
                 className="input"
                 type="email"
@@ -211,6 +234,9 @@ export default function AccountPage() {
               />
             </label>
           </div>
+          <p className="muted" style={{ marginTop: 8 }}>
+            Estos son tus datos de acceso. El grado y el dojo los asigna tu sensei.
+          </p>
           <button className="button" type="submit" disabled={savingProfile} style={{ marginTop: 14 }}>
             {savingProfile ? 'Guardando…' : 'Guardar perfil'}
           </button>
@@ -219,7 +245,7 @@ export default function AccountPage() {
 
       <section className="card stack">
         <h2 style={{ margin: 0 }}>Mis dojos</h2>
-        {!profile?.dojos?.length ? (
+        {!profile.dojos.length ? (
           <EmptyState
             icon={<IconDojo />}
             title="Sin dojos"
@@ -243,6 +269,21 @@ export default function AccountPage() {
                     <span className="content-listItemMeta" style={{ marginLeft: 8 }}>
                       {dojoRoleLabels[d.role] ?? d.role}
                       {d.grade ? ` · ${d.grade.name}` : ''}
+                    </span>
+                  </button>
+                ) : profile.role === 'STUDENT' ? (
+                  <button
+                    type="button"
+                    className="listAction"
+                    onClick={() => navigate('/student')}
+                  >
+                    <span aria-hidden="true">
+                      <IconDojo />
+                    </span>{' '}
+                    {d.name}
+                    <span className="content-listItemMeta" style={{ marginLeft: 8 }}>
+                      {dojoRoleLabels[d.role] ?? d.role}
+                      {d.grade ? ` · ${d.grade.name}` : ' · Sin grado'}
                     </span>
                   </button>
                 ) : (

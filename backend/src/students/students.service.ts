@@ -37,6 +37,7 @@ type StudentContentsByDojo = {
     styleId: string;
     gradeId: string | null;
     createdById: string;
+    completed: boolean;
   }[];
 };
 
@@ -91,13 +92,27 @@ export class StudentsService {
 
     const student = await this.prisma.user.findUnique({
       where: { id: studentUserId },
-      include: {
-        studentContents: true,
+      select: {
+        id: true,
+        name: true,
+        email: true,
+        role: true,
+        createdAt: true,
+        studentContents: {
+          select: { contentId: true, completed: true },
+        },
+        studentGrades: {
+          where: { dojoId },
+          select: {
+            grade: { select: { id: true, name: true, order: true } },
+          },
+        },
         dojoMemberships: {
           where: {
             dojoId,
             role: DojoRole.STUDENT,
           },
+          select: { role: true },
         },
       },
     })
@@ -106,7 +121,19 @@ export class StudentsService {
       throw new NotFoundException('Alumno no encontrado')
     }
 
-    return student
+    if (!student.dojoMemberships.length) {
+      throw new NotFoundException('Alumno no pertenece a este dojo')
+    }
+
+    return {
+      id: student.id,
+      name: student.name,
+      email: student.email,
+      role: student.role,
+      createdAt: student.createdAt,
+      grade: student.studentGrades[0]?.grade ?? null,
+      studentContents: student.studentContents,
+    }
   }
 
   async promoteStudent(
@@ -271,6 +298,15 @@ export class StudentsService {
       },
     });
 
+    const completedIds = new Set(
+      (
+        await this.prisma.studentContent.findMany({
+          where: { userId, completed: true },
+          select: { contentId: true },
+        })
+      ).map(x => x.contentId),
+    );
+
     const results: StudentContentsByDojo[] = [];
 
     for (const studentGrade of studentGrades) {
@@ -286,14 +322,17 @@ export class StudentsService {
             },
           ],
         },
-        orderBy: { createdAt: 'desc' },
+        orderBy: [{ gradeId: 'asc' }, { title: 'asc' }],
       });
 
       results.push({
         dojoId: studentGrade.dojo.id,
         dojoName: studentGrade.dojo.name,
         grade: studentGrade.grade.name,
-        contents,
+        contents: contents.map(c => ({
+          ...c,
+          completed: completedIds.has(c.id),
+        })),
       });
     }
 

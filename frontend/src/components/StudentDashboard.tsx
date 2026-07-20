@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { getNetworkErrorMessage } from '../hooks/useNetworkStatus';
 import {
@@ -7,6 +7,7 @@ import {
   type StudentContentsByDojo,
   type StudentStatsByDojo,
 } from '../services/students.service';
+import { getMyProfile } from '../services/users.service';
 import PageHeader from './ui/PageHeader';
 import StatCard from './ui/StatCard';
 import EmptyState from './ui/EmptyState';
@@ -16,62 +17,106 @@ import { IconDojo } from './icons';
 export default function StudentDashboard() {
   const [items, setItems] = useState<StudentContentsByDojo[]>([]);
   const [stats, setStats] = useState<StudentStatsByDojo[]>([]);
+  const [hasMembership, setHasMembership] = useState(false);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [justUnlocked, setJustUnlocked] = useState<Set<string>>(new Set());
-  const prevIds = useRef<Set<string>>(new Set());
+  const [statsWarning, setStatsWarning] = useState<string | null>(null);
   const navigate = useNavigate();
 
   useEffect(() => {
+    let mounted = true;
+
     async function load() {
       try {
         setError(null);
-        const [contents, s] = await Promise.all([
+        setStatsWarning(null);
+
+        const [contents, s, profile] = await Promise.all([
           getMyContents(),
-          getMyStats().catch(() => [] as StudentStatsByDojo[]),
+          getMyStats().catch(() => {
+            if (mounted) {
+              setStatsWarning('No se pudieron cargar progreso y asistencia.');
+            }
+            return [] as StudentStatsByDojo[];
+          }),
+          getMyProfile().catch(() => null),
         ]);
 
-        const nextIds = new Set(contents.flatMap(b => b.contents.map(c => c.id)));
-        if (prevIds.current.size > 0) {
-          const unlocked = new Set<string>();
-          nextIds.forEach(id => {
-            if (!prevIds.current.has(id)) unlocked.add(id);
-          });
-          if (unlocked.size) {
-            setJustUnlocked(unlocked);
-            window.setTimeout(() => setJustUnlocked(new Set()), 1200);
-          }
-        }
-        prevIds.current = nextIds;
+        if (!mounted) return;
 
         setItems(contents);
         setStats(s);
+        setHasMembership((profile?.dojos?.length ?? 0) > 0 || contents.length > 0);
       } catch (e) {
+        if (!mounted) return;
         setError(getNetworkErrorMessage(e) ?? 'No se pudieron cargar tus contenidos.');
       } finally {
-        setLoading(false);
+        if (mounted) setLoading(false);
       }
     }
+
     void load();
+
+    const onFocus = () => {
+      void getMyContents()
+        .then(contents => {
+          if (mounted) setItems(contents);
+        })
+        .catch(() => undefined);
+      void getMyStats()
+        .then(s => {
+          if (mounted) {
+            setStats(s);
+            setStatsWarning(null);
+          }
+        })
+        .catch(() => undefined);
+    };
+    window.addEventListener('focus', onFocus);
+
+    return () => {
+      mounted = false;
+      window.removeEventListener('focus', onFocus);
+    };
   }, []);
 
   if (loading) return <LoadingCard message="Cargando tu progreso…" />;
-  if (error) return <div className="card alert error">{error}</div>;
+  if (error) {
+    return (
+      <div className="stack">
+        <div className="card alert error" role="alert">
+          {error}
+        </div>
+        <button className="button secondary" type="button" onClick={() => window.location.reload()}>
+          Reintentar
+        </button>
+      </div>
+    );
+  }
+
   if (!items.length) {
     return (
       <div className="stack">
         <PageHeader
           title="Mi entrenamiento"
-          subtitle="Aún no tienes un dojo o contenidos asignados."
+          subtitle={
+            hasMembership
+              ? 'Tu dojo aún no tiene grado o contenidos disponibles.'
+              : 'Aún no tienes un dojo asignado.'
+          }
         />
         <EmptyState
           icon={<IconDojo />}
-          title="Sin dojo asignado"
-          description="Pide a tu sensei o a un administrador que te asigne a un dojo y un grado. Cuando lo hagan, verás aquí tus contenidos."
+          title={hasMembership ? 'Sin contenidos disponibles' : 'Sin dojo asignado'}
+          description={
+            hasMembership
+              ? 'Pide a tu sensei que te asigne un grado o publique material para tu nivel.'
+              : 'Pide a tu sensei o a un administrador que te asigne a un dojo y un grado. Cuando lo hagan, verás aquí tus contenidos.'
+          }
         />
         <div className="row">
           <Link className="button secondary" to="/account">
-            Ir a mi cuenta
+            Completar mis datos
           </Link>
         </div>
       </div>
@@ -82,11 +127,23 @@ export default function StudentDashboard() {
     <div className="stack">
       <PageHeader
         title="Mi entrenamiento"
-        subtitle="Consulta tu progreso, asistencia y contenidos desbloqueados."
+        subtitle="Consulta tu progreso, asistencia y contenidos disponibles."
+        action={
+          <Link className="button secondary" to="/account">
+            Mis datos
+          </Link>
+        }
       />
+
+      {statsWarning ? (
+        <div className="alert error" role="status">
+          {statsWarning}
+        </div>
+      ) : null}
 
       {items.map(block => {
         const dojoStats = stats.find(s => s.dojoId === block.dojoId);
+        const completedCount = block.contents.filter(c => c.completed).length;
 
         return (
           <section key={block.dojoId} className="stack">
@@ -101,7 +158,9 @@ export default function StudentDashboard() {
                     <p className="muted">Grado: {block.grade}</p>
                   </div>
                 </div>
-                <span className="pill">{block.contents.length} visibles</span>
+                <span className="pill">
+                  {completedCount}/{block.contents.length} completados
+                </span>
               </div>
 
               {dojoStats ? (
@@ -140,7 +199,7 @@ export default function StudentDashboard() {
                     <li key={c.id}>
                       <button
                         type="button"
-                        className={`listAction content-item unlocked${justUnlocked.has(c.id) ? ' just-unlocked' : ''}`}
+                        className={`listAction content-item${c.completed ? ' completed' : ' unlocked'}`}
                         onClick={() => navigate(`/dojos/${block.dojoId}/contents/${c.id}`)}
                       >
                         <span className="content-listItem">
@@ -148,6 +207,7 @@ export default function StudentDashboard() {
                             <span className="content-listItemTitle">{c.title}</span>
                             <span className="content-listItemMeta">
                               {c.gradeId ? 'Por grado' : 'Global'}
+                              {c.completed ? ' · Completado' : ''}
                             </span>
                           </span>
                           <span className="content-typeBadge">{c.type}</span>

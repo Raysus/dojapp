@@ -25,6 +25,7 @@ type Content = {
   body?: string | null
   gradeId?: string | null
   grade?: { name: string; order: number } | null
+  completed?: boolean
 }
 
 export default function ContentViewer() {
@@ -62,6 +63,8 @@ export default function ContentViewer() {
         const res = await api.get<Content>(`/dojos/${dojoId}/contents/${contentId}`)
         if (!mounted) return
         setContent(res.data)
+        setCompleted(Boolean(res.data.completed))
+        setCompleteMsg(res.data.completed ? 'Ya completaste este contenido.' : null)
       } catch (e: any) {
         if (!mounted) return
         setErr(getNetworkErrorMessage(e) ?? e?.response?.data?.message ?? 'No se pudo cargar el contenido')
@@ -101,12 +104,6 @@ export default function ContentViewer() {
       await completeMyContent(contentId)
       setCompleted(true)
       setCompleteMsg('Contenido marcado como completado. ¡Sigue así!')
-      // Signal dashboards to refresh unlock animation on next visit
-      try {
-        sessionStorage.setItem('dojapp:content-completed', contentId)
-      } catch {
-        /* ignore */
-      }
     } catch (e) {
       setCompleteMsg(getNetworkErrorMessage(e) ?? 'No se pudo marcar como completado.')
     } finally {

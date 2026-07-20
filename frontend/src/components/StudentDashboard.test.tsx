@@ -9,12 +9,26 @@ vi.mock('../services/students.service', () => ({
   getMyStats: vi.fn(),
 }));
 
+vi.mock('../services/users.service', () => ({
+  getMyProfile: vi.fn(),
+}));
+
 import { getMyContents, getMyStats } from '../services/students.service';
+import { getMyProfile } from '../services/users.service';
 
 describe('StudentDashboard', () => {
   beforeEach(() => {
     vi.mocked(getMyContents).mockReset();
     vi.mocked(getMyStats).mockReset();
+    vi.mocked(getMyProfile).mockReset();
+    vi.mocked(getMyProfile).mockResolvedValue({
+      id: 'u1',
+      email: 'alumno@dojo.cl',
+      name: 'Alumno',
+      role: 'STUDENT',
+      createdAt: new Date().toISOString(),
+      dojos: [],
+    });
   });
 
   it('renders empty state when student has no contents', async () => {
@@ -24,6 +38,7 @@ describe('StudentDashboard', () => {
     renderWithProviders(<StudentDashboard />);
 
     expect(await screen.findByText('Sin dojo asignado')).toBeInTheDocument();
+    expect(screen.getByText('Completar mis datos')).toBeInTheDocument();
   });
 
   it('renders dojo stats and content list', async () => {
@@ -41,6 +56,7 @@ describe('StudentDashboard', () => {
             body: null,
             createdAt: new Date().toISOString(),
             gradeId: 'grade-1',
+            completed: false,
           },
         ],
       },

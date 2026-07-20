@@ -411,10 +411,22 @@ export default function ProfessorDashboard() {
                           navigate(`/dojos/${selectedDojo}/students/${student.id}`)
                         }
                       >
-                        <span aria-hidden="true">
-                          <IconUser />
-                        </span>{' '}
-                        {student?.name ?? student?.user?.name ?? 'Alumno'}
+                        <span className="content-listItem">
+                          <span className="content-listItemMain">
+                            <span className="content-listItemTitle">
+                              <span aria-hidden="true">
+                                <IconUser />
+                              </span>{' '}
+                              {student?.name ?? 'Alumno'}
+                            </span>
+                            <span className="content-listItemMeta">
+                              {student?.email ?? 'Sin correo'}
+                              {student?.grade?.name
+                                ? ` · ${student.grade.name}`
+                                : ' · Sin grado'}
+                            </span>
+                          </span>
+                        </span>
                       </button>
                     </li>
                   ))}
